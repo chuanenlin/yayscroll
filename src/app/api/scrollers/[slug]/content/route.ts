@@ -193,7 +193,7 @@ etc.`
           const hasLongContent = uniqueContentLines.some(item => 
             item.content.includes('```') || item.content.length > 200
           )
-          const contentType = hasLongContent ? 'detailed' : 'short'
+          const contentType: 'short' | 'detailed' = hasLongContent ? 'detailed' : 'short'
 
           const newItems = uniqueContentLines.map((item) => ({
             scroller_id: scroller.id,
