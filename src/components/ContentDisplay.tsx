@@ -37,184 +37,76 @@ export default function ContentDisplay({ content, urls = [], contentType }: Cont
     }
   }
 
-  // Create JSX elements by parsing the content and URL placeholders
+  // Create JSX elements by parsing the content
   const renderContent = () => {
-    let displayContent = content
-    const elements: React.ReactElement[] = []
-    let elementIndex = 0
+    // Handle code blocks first
+    if (content.includes('```')) {
+      const codeBlockRegex = /```(\w+)?\n?([\s\S]*?)```/g
+      const parts = content.split(codeBlockRegex)
+      
+      return parts.map((part, index) => {
+        // Code block content (every 3rd element starting from index 2)
+        if (index % 3 === 2) {
+          return (
+            <div key={`code-${index}`} className="my-4 text-left">
+              <pre className="bg-gray-900 p-4 rounded-lg overflow-x-auto text-green-400 text-sm font-mono">
+                <code>{part.trim()}</code>
+              </pre>
+            </div>
+          )
+        }
+        // Language identifier (every 3rd element starting from index 1) - skip
+        if (index % 3 === 1) {
+          return null
+        }
+        
+        // Regular content - parse inline markdown directly
+        return <div key={`text-${index}`} dangerouslySetInnerHTML={{ __html: formatMarkdown(part) }} />
+      }).flat().filter(Boolean)
+    }
     
-    // Replace URL placeholders with clickable links
+    return [<div key="content" dangerouslySetInnerHTML={{ __html: formatMarkdown(content) }} />]
+  }
+
+  // Simple HTML conversion without placeholders
+  const formatMarkdown = (text: string) => {
+    let html = text
+    
+    // First handle URLs and replace with clickable links
     urls.forEach((urlData, index) => {
       const placeholder = `__URL_${index}__`
-      if (displayContent.includes(placeholder)) {
-        const parts = displayContent.split(placeholder)
-        displayContent = parts.join(`__LINK_${elementIndex}__`)
-        elementIndex++
+      if (html.includes(placeholder)) {
+        html = html.replace(new RegExp(placeholder, 'g'), 
+          `<br /><a href="${urlData.url}" target="_blank" rel="noopener noreferrer" class="text-white/40 text-base hover:text-white/60 transition-colors"><span class="text-sm">${urlData.text}</span></a>`
+        )
       }
     })
     
-    // Comprehensive markdown parsing
-    const parseMarkdown = (text: string) => {
-      const elements: React.ReactElement[] = []
-
-      // Handle code blocks first
-      if (text.includes('```')) {
-        const codeBlockRegex = /```(\w+)?\n?([\s\S]*?)```/g
-        const parts = text.split(codeBlockRegex)
-        
-        return parts.map((part, index) => {
-          // Code block content (every 3rd element starting from index 2)
-          if (index % 3 === 2) {
-            return (
-              <div key={`code-${index}`} className="my-4 text-left">
-                <pre className="bg-gray-900 p-4 rounded-lg overflow-x-auto text-green-400 text-sm font-mono">
-                  <code>{part.trim()}</code>
-                </pre>
-              </div>
-            )
-          }
-          // Language identifier (every 3rd element starting from index 1) - skip
-          if (index % 3 === 1) {
-            return null
-          }
-          
-          // Regular content - parse other markdown
-          return parseInlineMarkdown(part, index)
-        }).flat().filter(Boolean)
-      }
-      
-      return [parseInlineMarkdown(text, 0)]
-    }
-
-    const parseInlineMarkdown = (text: string, baseIndex: number) => {
-      const elements: React.ReactElement[] = []
-      let currentText = text
-      let keyIndex = baseIndex * 1000
-
-      // Handle headers (# ## ###)
-      currentText = currentText.replace(/^(#{1,3})\s+(.+)$/gm, (match, hashes, content) => {
+    // Then process markdown
+    html = html
+      // Bold
+      .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>')
+      // Italic
+      .replace(/\*(.*?)\*/g, '<em class="italic text-white/90">$1</em>')
+      // Inline code
+      .replace(/`([^`]+)`/g, '<code class="bg-gray-800 px-2 py-1 rounded text-green-400 font-mono">$1</code>')
+      // Headers
+      .replace(/^(#{1,3})\s+(.+)$/gm, (match, hashes, content) => {
         const level = hashes.length
-        const headerClass = level === 1 ? 'text-4xl font-bold mb-4' : 
-                           level === 2 ? 'text-3xl font-bold mb-3' : 
-                           'text-2xl font-semibold mb-2'
-        elements.push(<div key={`h${level}-${keyIndex++}`} className={`${headerClass} text-white`}>{content}</div>)
-        return `__HEADER_${elements.length - 1}__`
+        const className = level === 1 ? 'text-4xl font-bold mb-4' : 
+                         level === 2 ? 'text-3xl font-bold mb-3' : 
+                         'text-2xl font-semibold mb-2'
+        return `<div class="${className} text-white">${content}</div>`
       })
+      // Bullet points
+      .replace(/^[\s]*[-*+•]\s+(.+)$/gm, '<div class="flex items-start mb-2"><span class="text-white mr-2">•</span><span class="text-white">$1</span></div>')
+      // Numbered lists
+      .replace(/^[\s]*(\d+\.)\s+(.+)$/gm, '<div class="flex items-start mb-2"><span class="text-white mr-2">$1</span><span class="text-white">$2</span></div>')
+      // Line breaks
+      .replace(/\n\n/g, '<div class="mb-4"></div>')
+      .replace(/\n/g, '<br />')
 
-      // Handle bold (**text**)
-      currentText = currentText.replace(/\*\*(.*?)\*\*/g, (match, content) => {
-        elements.push(<strong key={`bold-${keyIndex++}`} className="font-bold text-white">{content}</strong>)
-        return `__BOLD_${elements.length - 1}__`
-      })
-
-      // Handle italic (*text*)
-      currentText = currentText.replace(/\*(.*?)\*/g, (match, content) => {
-        elements.push(<em key={`italic-${keyIndex++}`} className="italic text-white/90">{content}</em>)
-        return `__ITALIC_${elements.length - 1}__`
-      })
-
-      // Handle inline code (`code`)
-      currentText = currentText.replace(/`([^`]+)`/g, (match, content) => {
-        elements.push(<code key={`inline-code-${keyIndex++}`} className="bg-gray-800 px-2 py-1 rounded text-green-400 font-mono">{content}</code>)
-        return `__INLINE_CODE_${elements.length - 1}__`
-      })
-
-      // Handle bullet points (including actual bullet character •)
-      currentText = currentText.replace(/^[\s]*[-*+•]\s+(.+)$/gm, (match, content) => {
-        elements.push(<div key={`bullet-${keyIndex++}`} className="flex items-start mb-2"><span className="text-white mr-2">•</span><span className="text-white">{content}</span></div>)
-        return `__BULLET_${elements.length - 1}__`
-      })
-
-      // Handle numbered lists
-      currentText = currentText.replace(/^[\s]*(\d+\.)\s+(.+)$/gm, (match, number, content) => {
-        elements.push(<div key={`number-${keyIndex++}`} className="flex items-start mb-2"><span className="text-white mr-2">{number}</span><span className="text-white">{content}</span></div>)
-        return `__NUMBER_${elements.length - 1}__`
-      })
-
-      // Handle line breaks
-      currentText = currentText.replace(/\n\n/g, '__PARAGRAPH_BREAK__')
-      currentText = currentText.replace(/\n/g, '__LINE_BREAK__')
-
-      // Split by all possible placeholders and process each part
-      const allPlaceholders = /(__(?:LINK|HEADER|BOLD|ITALIC|INLINE_CODE|BULLET|NUMBER)_\d+__|__(?:PARAGRAPH_BREAK|LINE_BREAK)__)/g
-      const parts = currentText.split(allPlaceholders)
-      
-      return parts.map((part, index) => {
-        if (!part) return null
-
-        // Check for link placeholders
-        const linkMatch = part.match(/^__LINK_(\d+)__$/)
-        if (linkMatch) {
-          const linkIndex = parseInt(linkMatch[1])
-          const urlData = urls[linkIndex]
-          
-          if (urlData) {
-            return (
-              <a
-                key={`link-${baseIndex}-${index}`}
-                href={urlData.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white/40 text-base hover:text-white/60 transition-colors"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <br />
-                <span className="text-sm">{urlData.text}</span>
-              </a>
-            )
-          }
-        }
-
-        // Check for other markdown elements
-        const elementMatch = part.match(/^__(HEADER|BOLD|ITALIC|INLINE_CODE|BULLET|NUMBER)_(\d+)__$/)
-        if (elementMatch) {
-          const elementIndex = parseInt(elementMatch[2])
-          return elements[elementIndex] || null
-        }
-
-        // Handle paragraph breaks and line breaks
-        if (part === '__PARAGRAPH_BREAK__') {
-          return <div key={`p-break-${baseIndex}-${index}`} className="mb-4"></div>
-        }
-        if (part === '__LINE_BREAK__') {
-          return <br key={`br-${baseIndex}-${index}`} />
-        }
-
-        // Handle any remaining __LINK_X__ patterns that weren't caught
-        const remainingLinkMatch = part.match(/__LINK_(\d+)__/)
-        if (remainingLinkMatch) {
-          const linkIndex = parseInt(remainingLinkMatch[1])
-          const urlData = urls[linkIndex]
-          
-          if (urlData) {
-            return (
-              <a
-                key={`remaining-link-${baseIndex}-${index}`}
-                href={urlData.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white/40 text-base hover:text-white/60 transition-colors"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <br />
-                <span className="text-sm">{urlData.text}</span>
-              </a>
-            )
-          }
-          // If no URL data, just remove the placeholder
-          return <span key={`missing-link-${baseIndex}-${index}`}>{part.replace(/__LINK_\d+__/g, '')}</span>
-        }
-
-        // Regular text
-        if (part.trim()) {
-          return <span key={`text-${baseIndex}-${index}`}>{part}</span>
-        }
-        
-        return null
-      }).filter(Boolean)
-    }
-
-    return parseMarkdown(displayContent)
+    return html
   }
 
   // Determine text alignment based on content length
