@@ -1,24 +1,6 @@
 import { NextResponse } from 'next/server'
 import { openai } from '@/lib/openai'
-import fs from 'fs'
-import path from 'path'
-
-const DB_PATH = path.join(process.cwd(), 'mock-db.json')
-
-function getMockDB() {
-  try {
-    if (fs.existsSync(DB_PATH)) {
-      return JSON.parse(fs.readFileSync(DB_PATH, 'utf8'))
-    }
-  } catch (error) {
-    console.log('Mock database not found')
-  }
-  return { scrollers: [], content_items: [] }
-}
-
-function saveMockDB(db: any) {
-  fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2))
-}
+import { db } from '@/lib/database'
 
 // Check if content is too similar to existing content
 function isContentSimilar(newContent: string, existingContent: any[]): boolean {
@@ -68,14 +50,19 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const loadMore = searchParams.get('loadMore') === 'true'
     const offset = parseInt(searchParams.get('offset') || '0')
-    const db = getMockDB()
 
-    const scroller = db.scrollers.find((s: any) => s.slug === slug)
+    // Initialize database connection
+    await db.initialize()
+
+    // Get scroller
+    const scroller = await db.getScrollerBySlug(slug)
+
     if (!scroller) {
       return NextResponse.json({ error: 'Scroller not found' }, { status: 404 })
     }
 
-    let existingContent = db.content_items.filter((item: any) => item.scroller_id === scroller.id)
+    // Get existing content
+    let existingContent = await db.getAllContentItems(scroller.id)
 
     // Generate content if we need more (initial load or loadMore request)
     if (existingContent.length < 20 || loadMore) {
@@ -209,33 +196,34 @@ etc.`
           const contentType = hasLongContent ? 'detailed' : 'short'
 
           const newItems = uniqueContentLines.map((item, index) => ({
-            id: `${Date.now()}-${Math.random().toString(36).substring(2)}-${index}`,
             scroller_id: scroller.id,
             content: item.content,
             metadata: { 
               urls: item.urls,
               contentType: contentType
-            },
-            created_at: new Date().toISOString()
+            }
           }))
 
-          db.content_items.push(...newItems)
-          saveMockDB(db)
-          existingContent = [...newItems, ...existingContent]
+          // Insert new items
+          if (newItems.length > 0) {
+            const insertedItems = await db.addContentItems(newItems)
+            if (insertedItems.length > 0) {
+              existingContent = [...insertedItems, ...existingContent]
+            }
+          }
         }
       } catch (error) {
         console.error('Error generating content:', error)
         // Add fallback content if OpenAI fails
         const fallbackItems = Array.from({ length: itemsToGenerate }, (_, i) => ({
-          id: `${Date.now()}-${Math.random().toString(36).substring(2)}-fallback-${i}`,
           scroller_id: scroller.id,
-          content: `${scroller.title} #${Math.floor(Math.random() * 1000)}`,
-          created_at: new Date().toISOString()
+          content: `${scroller.title} #${Math.floor(Math.random() * 1000)}`
         }))
 
-        db.content_items.push(...fallbackItems)
-        saveMockDB(db)
-        existingContent = [...fallbackItems, ...existingContent]
+        const insertedFallback = await db.addContentItems(fallbackItems)
+        if (insertedFallback.length > 0) {
+          existingContent = [...insertedFallback, ...existingContent]
+        }
       }
     }
 
