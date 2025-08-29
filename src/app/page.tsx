@@ -86,7 +86,7 @@ export default function Home() {
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-32 sm:py-36">
         {/* Title */}
         <h1 className="text-5xl sm:text-6xl md:text-7xl font-light text-white mb-8 text-center tracking-tight leading-none">
-          Doomscroll Anything
+          Doomscroll Everything
         </h1>
         
         {/* Form - Google-style minimal */}
@@ -228,7 +228,7 @@ export default function Home() {
       <footer className="py-8 px-6 border-t border-gray-800/50 backdrop-blur-sm">
         <div className="flex flex-col sm:flex-row items-center justify-between text-gray-500 text-sm gap-3">
           <div className="text-center sm:text-left font-light">
-            © {new Date().getFullYear()} Doomscroll Anything. All rights reserved.
+            © {new Date().getFullYear()} Doomscroll Everything. All rights reserved.
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-sm shadow-emerald-400/50"></div>

@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       temperature: 0.7
     })
 
-    let suggestions = []
+    let suggestions: string[] = []
     try {
       const response = completion.choices[0]?.message?.content?.trim()
       if (response) {
