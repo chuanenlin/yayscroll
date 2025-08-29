@@ -40,7 +40,7 @@ export default function ContentDisplay({ content, urls = [], contentType }: Cont
   // Create JSX elements by parsing the content and URL placeholders
   const renderContent = () => {
     let displayContent = content
-    const elements: JSX.Element[] = []
+    const elements: React.ReactElement[] = []
     let elementIndex = 0
     
     // Replace URL placeholders with clickable links
@@ -55,7 +55,7 @@ export default function ContentDisplay({ content, urls = [], contentType }: Cont
     
     // Comprehensive markdown parsing
     const parseMarkdown = (text: string) => {
-      const elements: JSX.Element[] = []
+      const elements: React.ReactElement[] = []
 
       // Handle code blocks first
       if (text.includes('```')) {
@@ -87,7 +87,7 @@ export default function ContentDisplay({ content, urls = [], contentType }: Cont
     }
 
     const parseInlineMarkdown = (text: string, baseIndex: number) => {
-      const elements: JSX.Element[] = []
+      const elements: React.ReactElement[] = []
       let currentText = text
       let keyIndex = baseIndex * 1000
 
