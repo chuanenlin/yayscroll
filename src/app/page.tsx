@@ -58,17 +58,12 @@ export default function Home() {
         {/* Form - Google-style minimal */}
         <form onSubmit={handleSubmit} className="w-full max-w-lg mb-8">
           <div className="relative mb-8">
-            <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Search for anything: Wikipedia facts, SAT vocabulary, coding solutions..."
+              placeholder="Wikipedia facts, SAT vocabulary, coding solutions..."
               rows={1}
-              className="w-full pl-12 pr-6 py-4 bg-white text-gray-900 text-base rounded-full focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-300 border border-gray-200 resize-none overflow-hidden transition-all duration-300 font-normal placeholder:text-gray-400 shadow-sm hover:shadow-md focus:shadow-lg"
+              className="w-full px-6 py-4 bg-white text-gray-900 text-base rounded-full focus:outline-none focus:ring-2 focus:ring-gray-300 border border-gray-200 resize-none overflow-hidden transition-all duration-300 font-normal placeholder:text-gray-400 shadow-sm hover:shadow-md focus:shadow-lg"
               style={{
                 height: 'auto',
                 minHeight: '56px'
@@ -91,11 +86,11 @@ export default function Home() {
             <button
               type="submit"
               disabled={isLoading || !prompt.trim()}
-              className="px-8 py-3 bg-blue-500 text-white text-sm font-medium rounded-full hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg focus:ring-2 focus:ring-blue-200 focus:outline-none"
+              className="px-6 py-2.5 bg-gray-100 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 border border-gray-300 hover:border-gray-400 shadow-sm"
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  <div className="w-3 h-3 border-2 border-gray-400/30 border-t-gray-600 rounded-full animate-spin"></div>
                   Creating...
                 </span>
               ) : (
