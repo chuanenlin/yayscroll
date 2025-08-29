@@ -7,6 +7,9 @@ export default function Home() {
   const [prompt, setPrompt] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -15,6 +18,33 @@ export default function Home() {
     window.addEventListener('resize', checkMobile)
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
+
+  // Debounced suggestion fetching
+  useEffect(() => {
+    const timeoutId = setTimeout(async () => {
+      if (prompt.trim().length > 0 && showSuggestions) {
+        setIsLoadingSuggestions(true)
+        try {
+          const response = await fetch('/api/suggestions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query: prompt }),
+          })
+          const data = await response.json()
+          setSuggestions(data.suggestions || [])
+        } catch (error) {
+          console.error('Failed to fetch suggestions:', error)
+          setSuggestions([])
+        } finally {
+          setIsLoadingSuggestions(false)
+        }
+      }
+    }, 300) // 300ms debounce
+
+    return () => clearTimeout(timeoutId)
+  }, [prompt, showSuggestions])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,6 +96,8 @@ export default function Home() {
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
               placeholder="World wonders, SAT vocabulary, ..."
               rows={1}
               className="w-full px-6 py-4 bg-white text-gray-900 text-base rounded-full focus:outline-none focus:ring-2 focus:ring-gray-300 border border-gray-200 resize-none overflow-hidden transition-all duration-300 font-normal placeholder:text-gray-400 shadow-sm hover:shadow-md focus:shadow-lg"
@@ -82,10 +114,39 @@ export default function Home() {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   handleSubmit(e as unknown as React.FormEvent);
+                } else if (e.key === 'Escape') {
+                  setShowSuggestions(false);
                 }
               }}
               required
             />
+            
+            {/* Suggestions Dropdown */}
+            {showSuggestions && (suggestions.length > 0 || isLoadingSuggestions) && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+                {isLoadingSuggestions ? (
+                  <div className="px-4 py-3 text-gray-500 text-sm flex items-center gap-2">
+                    <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
+                    Getting suggestions...
+                  </div>
+                ) : (
+                  suggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      className="w-full px-4 py-3 text-left hover:bg-gray-50 text-gray-900 text-sm border-b border-gray-100 last:border-b-0 transition-colors duration-150"
+                      onMouseDown={(e) => {
+                        e.preventDefault(); // Prevent blur
+                        setPrompt(suggestion);
+                        setShowSuggestions(false);
+                      }}
+                    >
+                      {suggestion}
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
           <div className="flex justify-center">
             <button
