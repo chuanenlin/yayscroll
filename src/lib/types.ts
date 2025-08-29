@@ -10,6 +10,10 @@ export interface ContentItem {
   id: string
   scroller_id: string
   content: string
-  metadata?: Record<string, unknown>
+  metadata?: {
+    urls?: Array<{ text: string; url: string }>
+    contentType?: 'short' | 'detailed'
+    [key: string]: unknown
+  }
   created_at: string
 }
