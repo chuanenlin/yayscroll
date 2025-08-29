@@ -14,7 +14,7 @@ export default function ContentDisplay({ content, urls = [], contentType }: Cont
       if (contentType === 'detailed') {
         return "text-lg sm:text-xl md:text-2xl lg:text-3xl"
       } else {
-        return "text-4xl sm:text-5xl md:text-6xl lg:text-7xl"
+        return "text-2xl sm:text-3xl md:text-4xl lg:text-5xl"
       }
     }
     
@@ -25,15 +25,15 @@ export default function ContentDisplay({ content, urls = [], contentType }: Cont
     if (hasCodeBlocks) {
       // Code content - smaller base size
       return "text-lg sm:text-xl md:text-2xl lg:text-3xl"
-    } else if (textLength < 100) {
-      // Very short content - large text
-      return "text-4xl sm:text-5xl md:text-6xl lg:text-7xl"
-    } else if (textLength < 300) {
-      // Medium content - medium text
+    } else if (textLength < 50) {
+      // Very short content - large but reasonable text
       return "text-2xl sm:text-3xl md:text-4xl lg:text-5xl"
+    } else if (textLength < 200) {
+      // Medium content - medium text
+      return "text-xl sm:text-2xl md:text-3xl lg:text-4xl"
     } else {
       // Long content - smaller text to fit
-      return "text-xl sm:text-2xl md:text-3xl lg:text-4xl"
+      return "text-lg sm:text-xl md:text-2xl lg:text-3xl"
     }
   }
 
@@ -56,7 +56,6 @@ export default function ContentDisplay({ content, urls = [], contentType }: Cont
     // Comprehensive markdown parsing
     const parseMarkdown = (text: string) => {
       const elements: JSX.Element[] = []
-      let elementIndex = 0
 
       // Handle code blocks first
       if (text.includes('```')) {

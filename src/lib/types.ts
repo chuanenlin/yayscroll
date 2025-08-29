@@ -10,6 +10,6 @@ export interface ContentItem {
   id: string
   scroller_id: string
   content: string
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
   created_at: string
 }

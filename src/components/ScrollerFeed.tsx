@@ -55,7 +55,6 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const isKeyboardScrolling = useRef(false)
   const [creationMessageIndex, setCreationMessageIndex] = useState(0)
-  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0)
   const [waitMessageIndex, setWaitMessageIndex] = useState(0)
 
   const fetchContent = async (loadMore = false) => {
@@ -79,7 +78,7 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
           if (loadMore) {
             // Filter out any content that already exists to prevent duplicates
             const existingIds = new Set(prev.map(item => item.id))
-            const uniqueNewContent = newContent.filter((item: any) => !existingIds.has(item.id))
+            const uniqueNewContent = newContent.filter((item: ContentItem) => !existingIds.has(item.id))
             return [...prev, ...uniqueNewContent]
           }
           return newContent
@@ -114,16 +113,6 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     }
   }, [isLoading])
 
-  // Cycle through witty messages for loading more content
-  useEffect(() => {
-    if (isGenerating) {
-      const interval = setInterval(() => {
-        setLoadingMessageIndex((prev) => (prev + 1) % LOADING_MORE_MESSAGES.length)
-      }, 2000)
-      
-      return () => clearInterval(interval)
-    }
-  }, [isGenerating])
 
   // Cycle through witty wait messages
   useEffect(() => {

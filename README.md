@@ -1,4 +1,4 @@
-# YayScroll - TikTok Infinite Scroll Clone
+# WhateverScroll - TikTok Infinite Scroll Clone
 
 A TikTok-style infinite scroll web app where users can create custom feeds of AI-generated content.
 
