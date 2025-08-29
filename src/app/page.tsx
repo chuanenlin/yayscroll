@@ -95,9 +95,9 @@ export default function Home() {
         </p>
         
         {/* Form - Google-style minimal */}
-        <form onSubmit={handleSubmit} className="w-full max-w-2xl mb-8">
-          <div className="flex gap-3 items-start mb-4">
-            <div className="relative flex-1">
+        <form onSubmit={handleSubmit} className="w-full max-w-2xl mb-8" style={{ minHeight: '88px' }}>
+          <div className="flex gap-3 items-start">
+            <div className="relative flex-1" style={{ minHeight: '56px' }}>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
@@ -111,7 +111,7 @@ export default function Home() {
               }, 150)}
               placeholder="What to scroll?"
               rows={1}
-              className={`w-full px-6 py-4 bg-white text-gray-900 text-sm focus:outline-none ${searchBoxOpen || (showSuggestions && (suggestions.length > 0 || isLoadingSuggestions)) ? 'border-l border-r border-t border-gray-200' : 'border border-gray-200 focus:ring-2 focus:ring-gray-300'} resize-none overflow-hidden font-normal placeholder:text-gray-400 shadow-lg hover:shadow-xl focus:shadow-2xl`}
+              className={`w-full px-6 py-4 bg-white text-gray-900 text-sm focus:outline-none ${searchBoxOpen || (showSuggestions && (suggestions.length > 0 || isLoadingSuggestions)) ? 'border-l border-r border-t border-gray-200' : 'border border-gray-200'} resize-none overflow-hidden font-normal placeholder:text-gray-400 shadow-lg hover:shadow-xl focus:shadow-2xl`}
               style={{
                 height: 'auto',
                 minHeight: '56px',
