@@ -66,7 +66,7 @@ export async function GET(
 
     // Generate content if we need more (initial load or loadMore request)
     if (existingContent.length < 20 || loadMore) {
-      const itemsToGenerate = 20
+      const itemsToGenerate = 30
       
       try {
         const completion = await openai.chat.completions.create({

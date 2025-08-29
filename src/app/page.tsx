@@ -83,7 +83,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-950 via-black to-gray-900 flex flex-col">
       {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 sm:py-16">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-32 sm:py-36">
         {/* Title */}
         <h1 className="text-5xl sm:text-6xl md:text-7xl font-light text-white mb-8 text-center tracking-tight leading-none">
           Doomscroll Anything

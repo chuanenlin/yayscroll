@@ -35,6 +35,15 @@ export async function POST(request: Request) {
     }
 
     console.log('✓ Created scroller:', newScroller)
+    
+    // Start background content generation (don't await - let it run async)
+    fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/scrollers/${slug}/content`, {
+      method: 'GET',
+    }).catch(error => {
+      console.log('Background content generation failed:', error.message)
+      // Fail silently - content will be generated on first visit
+    })
+    
     return NextResponse.json({ slug })
   } catch (error) {
     console.error('Error creating scroller:', error)

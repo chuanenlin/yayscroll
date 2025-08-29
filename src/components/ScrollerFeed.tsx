@@ -97,7 +97,7 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
   }, [scrollerSlug])
 
   useEffect(() => {
-    if (currentIndex >= content.length - 10 && content.length > 0 && !isGenerating) {
+    if (currentIndex >= content.length - 25 && content.length > 0 && !isGenerating) {
       fetchContent(true)
     }
   }, [currentIndex, content.length, isGenerating])
