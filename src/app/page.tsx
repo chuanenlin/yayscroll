@@ -9,6 +9,7 @@ export default function Home() {
   const [isMobile, setIsMobile] = useState(false)
   const [suggestions, setSuggestions] = useState<string[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [searchBoxOpen, setSearchBoxOpen] = useState(false)
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false)
   const router = useRouter()
 
@@ -22,7 +23,7 @@ export default function Home() {
   // Debounced suggestion fetching
   useEffect(() => {
     const timeoutId = setTimeout(async () => {
-      if (prompt.trim().length > 0 && showSuggestions) {
+      if (showSuggestions && prompt.trim().length > 0) {
         setIsLoadingSuggestions(true)
         try {
           const response = await fetch('/api/suggestions', {
@@ -40,6 +41,15 @@ export default function Home() {
         } finally {
           setIsLoadingSuggestions(false)
         }
+      } else if (showSuggestions && prompt.trim().length === 0) {
+        // Set static suggestions immediately for empty input
+        setSuggestions([
+          "World wonders",
+          "SAT vocabulary", 
+          "Coding challenges",
+          "Historical facts",
+          "Science trivia"
+        ])
       }
     }, 300) // 300ms debounce
 
@@ -48,31 +58,25 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!prompt.trim()) return
+    if (!prompt.trim() || isLoading) return
 
     const title = prompt.split(' ').slice(0, 4).join(' ')
 
     setIsLoading(true)
-    try {
-      const response = await fetch('/api/scrollers/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title,
-          promptTemplate: prompt,
-        }),
-      })
+    const response = await fetch('/api/scrollers/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        title,
+        promptTemplate: prompt,
+      }),
+    })
 
-      if (response.ok) {
-        const { slug } = await response.json()
-        router.push(`/${slug}`)
-      }
-    } catch (error) {
-      console.error('Error creating scroller:', error)
-    } finally {
-      setIsLoading(false)
+    if (response.ok) {
+      const { slug } = await response.json()
+      router.push(`/${slug}`)
     }
   }
 
@@ -91,19 +95,32 @@ export default function Home() {
         </p>
         
         {/* Form - Google-style minimal */}
-        <form onSubmit={handleSubmit} className="w-full max-w-lg mb-8">
-          <div className="relative mb-4">
+        <form onSubmit={handleSubmit} className="w-full max-w-2xl mb-8">
+          <div className="flex gap-3 items-start mb-4">
+            <div className="relative flex-1">
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              onFocus={() => setShowSuggestions(true)}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-              placeholder="World wonders, SAT vocabulary, ..."
+              onFocus={() => {
+                setSearchBoxOpen(true)
+                setShowSuggestions(true)
+              }}
+              onBlur={() => setTimeout(() => {
+                setShowSuggestions(false)
+                setSearchBoxOpen(false)
+              }, 150)}
+              placeholder="What to scroll?"
               rows={1}
-              className="w-full px-6 py-4 bg-white text-gray-900 text-base rounded-full focus:outline-none focus:ring-2 focus:ring-gray-300 border border-gray-200 resize-none overflow-hidden transition-all duration-300 font-normal placeholder:text-gray-400 shadow-sm hover:shadow-md focus:shadow-lg"
+              className={`w-full px-6 py-4 bg-white text-gray-900 text-sm focus:outline-none ${searchBoxOpen || (showSuggestions && (suggestions.length > 0 || isLoadingSuggestions)) ? 'border-l border-r border-t border-gray-200' : 'border border-gray-200 focus:ring-2 focus:ring-gray-300'} resize-none overflow-hidden font-normal placeholder:text-gray-400 shadow-lg hover:shadow-xl focus:shadow-2xl`}
               style={{
                 height: 'auto',
-                minHeight: '56px'
+                minHeight: '56px',
+                borderRadius: searchBoxOpen || (showSuggestions && (suggestions.length > 0 || isLoadingSuggestions))
+                  ? '12px 12px 0 0' 
+                  : '12px',
+                transition: (searchBoxOpen || (showSuggestions && (suggestions.length > 0 || isLoadingSuggestions))) 
+                  ? 'none' 
+                  : 'border-radius 150ms ease-out'
               }}
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
@@ -116,14 +133,15 @@ export default function Home() {
                   handleSubmit(e as unknown as React.FormEvent);
                 } else if (e.key === 'Escape') {
                   setShowSuggestions(false);
+                  setSearchBoxOpen(false);
                 }
               }}
               required
             />
             
             {/* Suggestions Dropdown */}
-            {showSuggestions && (suggestions.length > 0 || isLoadingSuggestions) && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+            {showSuggestions && (suggestions.length > 0 || isLoadingSuggestions || prompt.trim().length === 0) && (
+              <div className="absolute top-full left-0 right-0 -mt-2 bg-white border-l border-r border-b border-gray-200 rounded-b-xl shadow-xl z-50 max-h-60 overflow-y-auto">
                 {isLoadingSuggestions ? (
                   <div className="px-4 py-3 text-gray-500 text-sm flex items-center gap-2">
                     <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
@@ -147,21 +165,14 @@ export default function Home() {
                 )}
               </div>
             )}
-          </div>
-          <div className="flex justify-center">
+            </div>
             <button
               type="submit"
-              disabled={isLoading || !prompt.trim()}
-              className="px-6 py-2.5 bg-gray-100 text-gray-800 text-sm font-medium rounded-md hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 border border-gray-300 hover:border-gray-400 shadow-sm"
+              disabled={isLoading}
+              className="px-6 py-4 bg-gray-100 text-gray-800 text-sm font-medium rounded-xl hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 border border-gray-300 hover:border-gray-400 shadow-lg hover:shadow-xl whitespace-nowrap flex items-center justify-center"
+              style={{ minHeight: '56px', marginTop: '-2px' }}
             >
-              {isLoading ? (
-                <span className="flex items-center gap-2">
-                  <div className="w-3 h-3 border-2 border-gray-400/30 border-t-gray-600 rounded-full animate-spin"></div>
-                  Creating...
-                </span>
-              ) : (
-                'Scroll'
-              )}
+              Scroll
             </button>
           </div>
         </form>

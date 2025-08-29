@@ -28,11 +28,11 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "system",
-          content: "Generate 5 short, engaging infinite scroll topics based on the user's partial input. Each topic should be 2-4 words maximum. Return ONLY a comma-separated list without any JSON formatting. Focus on educational, entertaining, or useful content categories."
+          content: "You are an autocomplete system for infinite scroll content topics. Complete the user's partial input by suggesting engaging, scroll-worthy topics that START with their exact input. Think about topics that would generate interesting, varied content for endless scrolling (like facts, trivia, quotes, tips, stories, discoveries, etc.). Return ONLY a comma-separated list of 5 completions that begin with the user's text. Each should be 2-5 words maximum."
         },
         {
           role: "user",
-          content: `Complete or suggest similar topics to: "${query.trim()}"`
+          content: `Autocomplete this partial input: "${query.trim()}"`
         }
       ],
       max_tokens: 80,
@@ -43,11 +43,18 @@ export async function POST(request: Request) {
     try {
       const response = completion.choices[0]?.message?.content?.trim()
       if (response) {
-        // Parse comma-separated list
+        const queryLower = query.toLowerCase().trim()
+        // Parse comma-separated list and filter to only include actual completions
         suggestions = response
           .split(/[,\n]/)
           .map(s => s.trim().replace(/^[-*•]\s*/, '').replace(/^\d+\.\s*/, '').replace(/["""]/g, ''))
-          .filter(s => s.length > 0 && s.length < 50)
+          .filter(s => {
+            const sLower = s.toLowerCase()
+            return s.length > 0 && 
+                   s.length < 50 && 
+                   sLower.startsWith(queryLower) && 
+                   sLower !== queryLower // Don't suggest exact match
+          })
           .slice(0, 5)
       }
     } catch (parseError) {
@@ -55,20 +62,11 @@ export async function POST(request: Request) {
       suggestions = []
     }
 
-    // Fallback to static suggestions if AI fails
-    if (suggestions.length === 0) {
-      suggestions = [
-        `${query} facts`,
-        `${query} trivia`,
-        `${query} quotes`,
-        `${query} tips`,
-        `${query} history`
-      ]
-    }
 
     return NextResponse.json({ suggestions: suggestions.slice(0, 5) })
   } catch (error) {
     console.error('Error generating suggestions:', error)
+    console.error('Error details:', error.message)
     
     // Return fallback suggestions
     const fallbackSuggestions = [
