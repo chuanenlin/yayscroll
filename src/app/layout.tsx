@@ -9,7 +9,7 @@ const manrope = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "WhateverScroll",
+  title: "Doomscroll Anything",
   description: "Create your own infinite scroll feed of AI-generated content",
 };
 
