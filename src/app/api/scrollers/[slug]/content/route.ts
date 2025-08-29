@@ -129,7 +129,7 @@ etc.`
             .filter(section => section.length > 0)
             .map(section => {
               // Store original URLs for clickable links
-              const urls = []
+              const urls: Array<{ text: string; url: string }> = []
               let urlIndex = 0
               
               // Extract URLs and replace with placeholders
