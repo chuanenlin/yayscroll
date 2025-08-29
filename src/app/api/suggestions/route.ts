@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ suggestions: suggestions.slice(0, 5) })
   } catch (error) {
     console.error('Error generating suggestions:', error)
-    console.error('Error details:', error.message)
+    console.error('Error details:', error instanceof Error ? error.message : 'Unknown error')
     
     // Return fallback suggestions
     const fallbackSuggestions = [
