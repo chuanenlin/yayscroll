@@ -61,7 +61,7 @@ export default function Home() {
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Wikipedia facts, SAT vocabulary, coding solutions..."
+              placeholder="World wonders, SAT vocabulary, ..."
               rows={1}
               className="w-full px-6 py-4 bg-white text-gray-900 text-base rounded-full focus:outline-none focus:ring-2 focus:ring-gray-300 border border-gray-200 resize-none overflow-hidden transition-all duration-300 font-normal placeholder:text-gray-400 shadow-sm hover:shadow-md focus:shadow-lg"
               style={{
