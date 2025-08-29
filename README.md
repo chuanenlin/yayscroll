@@ -1,36 +1,90 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# YayScroll - TikTok Infinite Scroll Clone
 
-## Getting Started
+A TikTok-style infinite scroll web app where users can create custom feeds of AI-generated content.
 
-First, run the development server:
+## Features
+
+- **Custom Content Feeds**: Users can create scrollers with their own prompts (e.g., Wikipedia facts, GRE vocabulary)
+- **TikTok-style Interface**: Full-screen vertical scrolling with snap-to-card behavior
+- **AI Content Generation**: Powered by OpenAI GPT-4 for dynamic content creation
+- **Infinite Scroll**: Automatically generates new content as users scroll
+- **Clean Minimal Design**: No likes, comments, or social features - just content
+
+## Setup Instructions
+
+### 1. Database Setup
+
+You need to run the SQL schema in your Supabase dashboard:
+
+1. Go to your Supabase project dashboard
+2. Navigate to SQL Editor
+3. Copy and paste the contents of `supabase-schema.sql`
+4. Run the SQL commands
+
+### 2. Environment Variables
+
+The `.env.local` file is already configured with your API keys:
+
+```
+OPENAI_API_KEY=your-openai-key
+NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+```
+
+### 3. Install Dependencies
+
+```bash
+npm install
+```
+
+### 4. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app will be available at `http://localhost:3010`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How It Works
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. **Landing Page** (`/`): Users can create new scrollers by entering a title and prompt template
+2. **Scroller Feed** (`/[slug]`): TikTok-style infinite scroll interface showing AI-generated content
+3. **Content Generation**: Each scroller uses OpenAI to generate content based on the user's prompt
 
-## Learn More
+## API Routes
 
-To learn more about Next.js, take a look at the following resources:
+- `POST /api/scrollers/create` - Create a new scroller
+- `GET /api/scrollers/[slug]/content` - Fetch content for a scroller (auto-generates if needed)
+- `POST /api/generate` - Generate content using OpenAI
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Database Schema
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `scrollers`: Stores scroller configurations (slug, title, prompt template)
+- `content_items`: Stores generated content items linked to scrollers
 
-## Deploy on Vercel
+## Tech Stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Frontend**: Next.js 15 with TypeScript
+- **Styling**: Tailwind CSS
+- **Database**: Supabase (PostgreSQL)
+- **AI**: OpenAI GPT-4
+- **Deployment**: Ready for Vercel
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Usage Examples
+
+Create scrollers for:
+- Random Wikipedia facts
+- GRE vocabulary practice
+- Daily motivational quotes
+- Programming tips and tricks
+- Historical events
+- Science facts
+- Language learning phrases
+
+## Next Steps
+
+1. Set up the database schema in Supabase
+2. Test creating a scroller from the homepage
+3. Test the infinite scroll functionality
+4. Deploy to Vercel for production use
