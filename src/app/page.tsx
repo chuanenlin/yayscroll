@@ -63,7 +63,7 @@ export default function Home() {
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Wikipedia facts, SAT vocabulary, Leet code solutions..."
               rows={1}
-              className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-white text-gray-900 text-base sm:text-lg rounded-full focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none overflow-hidden transition-all duration-300 font-normal placeholder:text-gray-500 shadow-lg hover:shadow-xl"
+              className="w-full px-4 py-3 sm:px-5 sm:py-4 bg-white text-gray-900 text-base rounded-full focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none overflow-hidden transition-all duration-300 font-normal placeholder:text-gray-500 shadow-lg hover:shadow-xl"
               style={{
                 height: 'auto',
                 minHeight: '52px'
@@ -102,7 +102,7 @@ export default function Home() {
         
         {/* Trending Scrolls */}
         <div className="text-center max-w-4xl mt-16">
-          <h2 className="text-lg sm:text-xl text-gray-400 mb-6 font-light tracking-wide">Trending Scrolls</h2>
+          <h2 className="text-lg text-gray-400 mb-6 font-light tracking-wide">Trending Scrolls</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <a
               href="/wikipedia-facts"
@@ -110,8 +110,8 @@ export default function Home() {
               rel="noopener noreferrer"
               className="group bg-gray-900/20 backdrop-blur-sm border border-gray-700/30 rounded-lg p-3 sm:p-4 hover:border-gray-600/50 hover:bg-gray-800/30 transition-all duration-200 cursor-pointer text-left"
             >
-              <div className="text-white text-xs font-medium mb-2 group-hover:text-gray-100">Wikipedia Facts</div>
-              <div className="text-gray-400 text-xs font-light leading-relaxed line-clamp-3 group-hover:text-gray-300">
+              <div className="text-white text-sm font-medium mb-2 group-hover:text-gray-100">Wikipedia Facts</div>
+              <div className="text-gray-400 text-sm font-light leading-relaxed line-clamp-3 group-hover:text-gray-300">
                 The Great Wall of China isn&apos;t visible from space with the naked eye, contrary to popular belief.
               </div>
             </a>
@@ -121,8 +121,8 @@ export default function Home() {
               rel="noopener noreferrer"
               className="group bg-gray-900/20 backdrop-blur-sm border border-gray-700/30 rounded-lg p-3 sm:p-4 hover:border-gray-600/50 hover:bg-gray-800/30 transition-all duration-200 cursor-pointer text-left"
             >
-              <div className="text-white text-xs font-medium mb-2 group-hover:text-gray-100">GRE Vocabulary</div>
-              <div className="text-gray-400 text-xs font-light leading-relaxed line-clamp-3 group-hover:text-gray-300">
+              <div className="text-white text-sm font-medium mb-2 group-hover:text-gray-100">GRE Vocabulary</div>
+              <div className="text-gray-400 text-sm font-light leading-relaxed line-clamp-3 group-hover:text-gray-300">
                 <strong>Ephemeral:</strong> Lasting for a very short time; transitory or fleeting in nature.
               </div>
             </a>
@@ -132,8 +132,8 @@ export default function Home() {
               rel="noopener noreferrer"
               className="group bg-gray-900/20 backdrop-blur-sm border border-gray-700/30 rounded-lg p-3 sm:p-4 hover:border-gray-600/50 hover:bg-gray-800/30 transition-all duration-200 cursor-pointer text-left"
             >
-              <div className="text-white text-xs font-medium mb-2 group-hover:text-gray-100">Daily Quotes</div>
-              <div className="text-gray-400 text-xs font-light leading-relaxed line-clamp-3 group-hover:text-gray-300">
+              <div className="text-white text-sm font-medium mb-2 group-hover:text-gray-100">Daily Quotes</div>
+              <div className="text-gray-400 text-sm font-light leading-relaxed line-clamp-3 group-hover:text-gray-300">
                 &ldquo;The only way to do great work is to love what you do.&rdquo; — Steve Jobs
               </div>
             </a>
@@ -143,9 +143,9 @@ export default function Home() {
               rel="noopener noreferrer"
               className="group bg-gray-900/20 backdrop-blur-sm border border-gray-700/30 rounded-lg p-3 sm:p-4 hover:border-gray-600/50 hover:bg-gray-800/30 transition-all duration-200 cursor-pointer text-left"
             >
-              <div className="text-white text-xs font-medium mb-2 group-hover:text-gray-100">Programming Tips</div>
-              <div className="text-gray-400 text-xs font-light leading-relaxed line-clamp-3 group-hover:text-gray-300">
-                Use <code className="bg-gray-800 px-1 py-0.5 rounded text-xs">console.log</code> strategically for debugging, but remember to remove them before production.
+              <div className="text-white text-sm font-medium mb-2 group-hover:text-gray-100">Programming Tips</div>
+              <div className="text-gray-400 text-sm font-light leading-relaxed line-clamp-3 group-hover:text-gray-300">
+                Use <code className="bg-gray-800 px-1 py-0.5 rounded text-sm">console.log</code> strategically for debugging, but remember to remove them before production.
               </div>
             </a>
           </div>

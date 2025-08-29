@@ -68,7 +68,7 @@ export default function ContentDisplay({ content, urls = [], contentType }: Cont
           if (index % 3 === 2) {
             return (
               <div key={`code-${index}`} className="my-4 text-left">
-                <pre className="bg-gray-900 p-4 rounded-lg overflow-x-auto text-green-400 text-sm sm:text-base font-mono">
+                <pre className="bg-gray-900 p-4 rounded-lg overflow-x-auto text-green-400 text-sm font-mono">
                   <code>{part.trim()}</code>
                 </pre>
               </div>
@@ -156,11 +156,11 @@ export default function ContentDisplay({ content, urls = [], contentType }: Cont
                 href={urlData.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-white/40 text-xl sm:text-2xl hover:text-white/60 transition-colors"
+                className="text-white/40 text-base hover:text-white/60 transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
                 <br />
-                <span className="text-base sm:text-lg">{urlData.text}</span>
+                <span className="text-sm">{urlData.text}</span>
               </a>
             )
           }
@@ -194,11 +194,11 @@ export default function ContentDisplay({ content, urls = [], contentType }: Cont
                 href={urlData.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-white/40 text-xl sm:text-2xl hover:text-white/60 transition-colors"
+                className="text-white/40 text-base hover:text-white/60 transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >
                 <br />
-                <span className="text-base sm:text-lg">{urlData.text}</span>
+                <span className="text-sm">{urlData.text}</span>
               </a>
             )
           }

@@ -212,7 +212,7 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
       <div className="h-screen bg-black flex flex-col items-center justify-center">
         <div className="px-6 sm:px-8 md:px-12 lg:px-16 xl:px-20 py-12 flex flex-col items-center justify-center w-full">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mb-6"></div>
-          <div className="text-white text-center text-xl sm:text-2xl transition-opacity duration-500 max-w-5xl">{CREATION_MESSAGES[creationMessageIndex]}</div>
+          <div className="text-white text-center text-lg transition-opacity duration-500 max-w-5xl">{CREATION_MESSAGES[creationMessageIndex]}</div>
         </div>
       </div>
     )
@@ -251,7 +251,7 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
           <div className="px-6 sm:px-8 md:px-12 lg:px-16 xl:px-20 py-12 flex items-center justify-center w-full">
             <div className="text-center max-w-5xl w-full">
               <div className="animate-spin w-12 h-12 border-2 border-white/30 border-t-white rounded-full mx-auto mb-8"></div>
-              <div className="text-white/70 text-lg sm:text-xl leading-relaxed font-normal italic transition-opacity duration-500">
+              <div className="text-white/70 text-base leading-relaxed font-normal italic transition-opacity duration-500">
                 {WAIT_MESSAGES[waitMessageIndex]}
               </div>
             </div>
