@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     // Initialize database connection
     await db.initialize()
 
-    let baseSlug = title.toLowerCase()
+    const baseSlug = title.toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '')
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')

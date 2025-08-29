@@ -81,7 +81,7 @@ export default function Home() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  handleSubmit(e as any);
+                  handleSubmit(e as unknown as React.FormEvent);
                 }
               }}
               required
@@ -115,7 +115,7 @@ export default function Home() {
             >
               <div className="text-white text-sm font-medium mb-3 group-hover:text-gray-100">Wikipedia Facts</div>
               <div className="text-gray-300 text-xs sm:text-sm font-light leading-relaxed line-clamp-3 group-hover:text-gray-200">
-                The Great Wall of China isn't visible from space with the naked eye, contrary to popular belief.
+                The Great Wall of China isn&apos;t visible from space with the naked eye, contrary to popular belief.
               </div>
             </a>
             <a
@@ -137,7 +137,7 @@ export default function Home() {
             >
               <div className="text-white text-sm font-medium mb-3 group-hover:text-gray-100">Daily Quotes</div>
               <div className="text-gray-300 text-xs sm:text-sm font-light leading-relaxed line-clamp-3 group-hover:text-gray-200">
-                "The only way to do great work is to love what you do." — Steve Jobs
+                &ldquo;The only way to do great work is to love what you do.&rdquo; — Steve Jobs
               </div>
             </a>
             <a

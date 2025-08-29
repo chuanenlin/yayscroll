@@ -3,7 +3,7 @@ import { openai } from '@/lib/openai'
 import { db } from '@/lib/database'
 
 // Check if content is too similar to existing content
-function isContentSimilar(newContent: string, existingContent: any[]): boolean {
+function isContentSimilar(newContent: string, existingContent: { content: string }[]): boolean {
   const newWords = newContent.toLowerCase().split(/\W+/).filter(word => word.length > 3)
   
   for (const existing of existingContent.slice(-20)) { // Check last 20 items
@@ -89,7 +89,7 @@ CRITICAL ANTI-REPETITION REQUIREMENTS:
 - Use diverse vocabulary, examples, and approaches
 - If this is vocabulary/definitions: use completely different words
 - If this is facts: cover different subjects/areas entirely
-- NEVER reuse the same examples, quotes, or specific details${existingContent.length > 0 ? `\n\nEXISTING CONTENT TO AVOID REPEATING (DO NOT use similar topics, words, or themes):\n${existingContent.slice(-15).map((item: any) => `- ${item.content.substring(0, 150)}`).join('\n')}` : ''}
+- NEVER reuse the same examples, quotes, or specific details${existingContent.length > 0 ? `\n\nEXISTING CONTENT TO AVOID REPEATING (DO NOT use similar topics, words, or themes):\n${existingContent.slice(-15).map((item: { content: string }) => `- ${item.content.substring(0, 150)}`).join('\n')}` : ''}
 
 CONTENT LENGTH GUIDANCE:
 - DEFAULT: Keep content short (1-2 sentences, like a tweet) for easy mobile scrolling
@@ -123,7 +123,7 @@ etc.`
         if (response) {
           // Parse the numbered list - handle multi-line content properly
           const numberedSections = response.split(/\n(?=\d+\.)/g)
-          let contentLines = numberedSections
+          const contentLines = numberedSections
             .filter(section => /^\d+\./.test(section.trim()))
             .map(section => section.replace(/^\d+\.\s*/, '').trim())
             .filter(section => section.length > 0)
@@ -195,7 +195,7 @@ etc.`
           )
           const contentType = hasLongContent ? 'detailed' : 'short'
 
-          const newItems = uniqueContentLines.map((item, index) => ({
+          const newItems = uniqueContentLines.map((item) => ({
             scroller_id: scroller.id,
             content: item.content,
             metadata: { 
@@ -215,7 +215,7 @@ etc.`
       } catch (error) {
         console.error('Error generating content:', error)
         // Add fallback content if OpenAI fails
-        const fallbackItems = Array.from({ length: itemsToGenerate }, (_, i) => ({
+        const fallbackItems = Array.from({ length: itemsToGenerate }, () => ({
           scroller_id: scroller.id,
           content: `${scroller.title} #${Math.floor(Math.random() * 1000)}`
         }))
@@ -228,7 +228,7 @@ etc.`
     }
 
     // Sort by creation date (newest first)
-    existingContent.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    existingContent.sort((a: { created_at: string }, b: { created_at: string }) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
     // Return paginated results
     const startIndex = offset
