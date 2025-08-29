@@ -51,13 +51,18 @@ export default function Home() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 sm:py-16">
         {/* Title */}
-        <h1 className="text-5xl sm:text-6xl md:text-7xl font-light text-white mb-8 text-center tracking-tight leading-none">
+        <h1 className="text-5xl sm:text-6xl md:text-7xl font-light text-white mb-4 text-center tracking-tight leading-none">
           YayScroll
         </h1>
         
+        {/* Tagline */}
+        <p className="text-base text-gray-400 mb-8 text-center font-light">
+          Create infinite scrolls of anything
+        </p>
+        
         {/* Form - Google-style minimal */}
         <form onSubmit={handleSubmit} className="w-full max-w-lg mb-8">
-          <div className="relative mb-8">
+          <div className="relative mb-4">
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
@@ -94,7 +99,7 @@ export default function Home() {
                   Creating...
                 </span>
               ) : (
-                'Create Scroll'
+                'Scroll'
               )}
             </button>
           </div>
