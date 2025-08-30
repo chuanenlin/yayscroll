@@ -78,8 +78,28 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
   const isKeyboardScrolling = useRef(false)
   const [creationMessageIndex, setCreationMessageIndex] = useState(0)
   const [waitMessageIndex, setWaitMessageIndex] = useState(0)
+  
+  // Debug stats for mobile debugging
+  const [debugStats, setDebugStats] = useState({
+    totalApiCalls: 0,
+    lastApiCall: null as Date | null,
+    lastContentGenerated: 0,
+    totalContentGenerated: 0,
+    triggerHistory: [] as Array<{ type: string, timestamp: Date, currentIndex: number, contentLength: number }>,
+    scrollEvents: 0,
+    lastScrollEvent: null as Date | null,
+  })
 
   const fetchContent = async (loadMore = false) => {
+    const startTime = new Date()
+    
+    // Update debug stats for API call tracking
+    setDebugStats(prev => ({
+      ...prev,
+      totalApiCalls: prev.totalApiCalls + 1,
+      lastApiCall: startTime,
+    }))
+    
     try {
       if (!loadMore) {
         setIsLoading(true)
@@ -93,21 +113,46 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
         params.append('offset', content.length.toString())
       }
       const url = `/api/scrollers/${scrollerSlug}/content${params.toString() ? '?' + params.toString() : ''}`
+      console.log(`🔥 API CALL: ${loadMore ? 'LOAD_MORE' : 'INITIAL'} - ${url}`)
+      
       const response = await fetch(url)
       if (response.ok) {
         const newContent = await response.json()
+        console.log(`✅ API RESPONSE: Got ${newContent.length} items`)
+        
         setContent(prev => {
           if (loadMore) {
             // Filter out any content that already exists to prevent duplicates
             const existingIds = new Set(prev.map(item => item.id))
             const uniqueNewContent = newContent.filter((item: ContentItem) => !existingIds.has(item.id))
+            console.log(`📊 CONTENT UPDATE: ${uniqueNewContent.length} new items added (${prev.length} -> ${prev.length + uniqueNewContent.length})`)
+            
+            // Update debug stats
+            setDebugStats(prevStats => ({
+              ...prevStats,
+              lastContentGenerated: uniqueNewContent.length,
+              totalContentGenerated: prevStats.totalContentGenerated + uniqueNewContent.length,
+            }))
+            
             return [...prev, ...uniqueNewContent]
+          } else {
+            console.log(`📊 INITIAL CONTENT: ${newContent.length} items loaded`)
+            
+            // Update debug stats for initial load
+            setDebugStats(prevStats => ({
+              ...prevStats,
+              lastContentGenerated: newContent.length,
+              totalContentGenerated: newContent.length,
+            }))
+            
+            return newContent
           }
-          return newContent
         })
+      } else {
+        console.error('❌ API ERROR: Response not ok', response.status)
       }
     } catch (error) {
-      console.error('Error fetching content:', error)
+      console.error('❌ FETCH ERROR:', error)
     } finally {
       setIsLoading(false)
       setIsGenerating(false)
@@ -124,7 +169,21 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
   // Separate effect for content generation trigger to avoid infinite loops
   useEffect(() => {
     if (currentIndex >= content.length - 25 && content.length > 0 && !isGenerating) {
-      console.log('Index-based trigger:', { currentIndex, contentLength: content.length, isGenerating, trigger: content.length - 25 })
+      const trigger = { 
+        type: 'INDEX_TRIGGER', 
+        timestamp: new Date(), 
+        currentIndex, 
+        contentLength: content.length 
+      }
+      
+      console.log('🎯 INDEX TRIGGER:', trigger)
+      
+      // Track trigger in history
+      setDebugStats(prev => ({
+        ...prev,
+        triggerHistory: [...prev.triggerHistory.slice(-9), trigger] // Keep last 10 triggers
+      }))
+      
       stableFetchContent(true)
     }
   }, [currentIndex, stableFetchContent, content.length, isGenerating])
@@ -140,9 +199,30 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
       const totalHeight = container.scrollHeight
       const scrollPercentage = scrollPosition / (totalHeight - windowHeight)
       
+      // Update scroll event stats
+      setDebugStats(prev => ({
+        ...prev,
+        scrollEvents: prev.scrollEvents + 1,
+        lastScrollEvent: new Date(),
+      }))
+      
       // If user has scrolled 80% through available content, load more
       if (scrollPercentage > 0.8 && content.length > 0 && !isGenerating) {
-        console.log('Scroll percentage trigger:', { scrollPercentage, contentLength: content.length, totalHeight, scrollPosition })
+        const trigger = { 
+          type: 'SCROLL_TRIGGER', 
+          timestamp: new Date(), 
+          currentIndex, 
+          contentLength: content.length 
+        }
+        
+        console.log('📜 SCROLL TRIGGER:', { ...trigger, scrollPercentage, scrollPosition, totalHeight })
+        
+        // Track trigger in history
+        setDebugStats(prev => ({
+          ...prev,
+          triggerHistory: [...prev.triggerHistory.slice(-9), trigger] // Keep last 10 triggers
+        }))
+        
         stableFetchContent(true)
       }
     }
@@ -193,10 +273,10 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     // Allow scrolling to the wait message scroll when generating
     const maxIndex = isGenerating ? content.length : content.length - 1
     
-    console.log('Scroll detected:', { scrollPosition, rawIndex, newIndex, currentIndex, maxIndex, contentLength: content.length })
+    console.log('🔄 SCROLL EVENT:', { scrollPosition, rawIndex, newIndex, currentIndex, maxIndex, contentLength: content.length })
     
     if (newIndex !== currentIndex && newIndex >= 0 && newIndex <= maxIndex) {
-      console.log('Setting new index:', newIndex)
+      console.log('📍 INDEX CHANGE:', { from: currentIndex, to: newIndex })
       setCurrentIndex(newIndex)
     }
   }, [currentIndex, content.length, isGenerating])
@@ -270,16 +350,51 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
   }
 
   return (
-    <div 
-      ref={containerRef}
-      className="h-screen overflow-y-scroll snap-y snap-mandatory bg-black scroll-container"
-      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-    >
-      <style jsx>{`
-        div::-webkit-scrollbar {
-          display: none;
-        }
-      `}</style>
+    <div className="relative">
+      {/* Floating Debug Panel - always visible */}
+      {DEBUG_MODE && (
+        <div className="fixed top-4 right-4 z-50 bg-black/98 text-white text-xs p-3 rounded-lg font-mono w-64 border border-white/30 shadow-lg">
+          <div className="text-green-400 font-bold mb-2">🔍 LIVE DEBUG</div>
+          
+          <div className="space-y-1 text-xs">
+            <div>Index: {currentIndex}/{content.length - 1}</div>
+            <div>Status: <span className={isGenerating ? 'text-yellow-400' : isLoading ? 'text-blue-400' : 'text-green-400'}>
+              {isGenerating ? 'GENERATING' : isLoading ? 'LOADING' : 'IDLE'}
+            </span></div>
+            <div>Content: {content.length} items</div>
+            <div>Trigger: ≥{content.length - 25} <span className={currentIndex >= content.length - 25 ? 'text-red-400' : 'text-green-400'}>
+              ({currentIndex >= content.length - 25 ? 'READY' : 'NOT_READY'})
+            </span></div>
+            <div>API calls: {debugStats.totalApiCalls}</div>
+            <div>Scroll events: {debugStats.scrollEvents}</div>
+            {containerRef.current && (
+              <div>Scroll: {Math.round((containerRef.current.scrollTop / (containerRef.current.scrollHeight - window.innerHeight)) * 100)}%</div>
+            )}
+            
+            {debugStats.triggerHistory.length > 0 && (
+              <>
+                <div className="mt-2 pt-2 border-t border-white/20 text-red-400">Last Triggers:</div>
+                {debugStats.triggerHistory.slice(-2).map((trigger, i) => (
+                  <div key={i} className="text-xs text-gray-300">
+                    {trigger.type.replace('_TRIGGER', '')}: {new Date(trigger.timestamp).toLocaleTimeString()}
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      
+      <div 
+        ref={containerRef}
+        className="h-screen overflow-y-scroll snap-y snap-mandatory bg-black scroll-container"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
+        <style jsx>{`
+          div::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
       
       {content.map((item, index) => (
         <div
@@ -294,35 +409,88 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
             />
           </div>
 
-          {/* Debug overlay for development */}
+          {/* Comprehensive Debug overlay for mobile debugging */}
           {DEBUG_MODE && (
-            <div className="absolute top-4 left-4 bg-black/90 text-white text-xs p-3 rounded font-mono max-w-64">
-              <div>Card: {index}/{content.length - 1}</div>
-              <div>Current: {currentIndex}</div>
-              <div>Generating: {isGenerating ? 'YES' : 'NO'}</div>
-              <div>Trigger at: ≥{content.length - 25}</div>
-              <div>Should trigger: {currentIndex >= content.length - 25 ? 'YES' : 'NO'}</div>
-              <div className="mt-1 pt-1 border-t border-white/20">
-                <div>Scroll: {Math.round((containerRef.current?.scrollTop || 0) / window.innerHeight * 100) / 100}</div>
+            <div className="absolute top-2 left-2 bg-black/95 text-white text-xs p-3 rounded-lg font-mono max-w-72 max-h-96 overflow-y-auto border border-white/20">
+              {/* Header */}
+              <div className="text-green-400 font-bold border-b border-white/20 pb-2 mb-2">
+                🔍 DEBUG PANEL
+              </div>
+              
+              {/* Current Status */}
+              <div className="mb-3">
+                <div className="text-blue-400 font-semibold">STATUS</div>
+                <div>Card: {index}/{content.length - 1}</div>
+                <div>Current: {currentIndex}</div>
+                <div>Loading: <span className={isLoading ? 'text-yellow-400' : 'text-green-400'}>{isLoading ? 'YES' : 'NO'}</span></div>
+                <div>Generating: <span className={isGenerating ? 'text-yellow-400' : 'text-green-400'}>{isGenerating ? 'YES' : 'NO'}</span></div>
+              </div>
+              
+              {/* Content Stats */}
+              <div className="mb-3">
+                <div className="text-purple-400 font-semibold">CONTENT</div>
+                <div>Total items: {content.length}</div>
+                <div>Last generated: {debugStats.lastContentGenerated}</div>
+                <div>Total generated: {debugStats.totalContentGenerated}</div>
+              </div>
+              
+              {/* Trigger System */}
+              <div className="mb-3">
+                <div className="text-orange-400 font-semibold">TRIGGERS</div>
+                <div>Index trigger: ≥{content.length - 25}</div>
+                <div>Should trigger: <span className={currentIndex >= content.length - 25 ? 'text-red-400' : 'text-green-400'}>{currentIndex >= content.length - 25 ? 'YES' : 'NO'}</span></div>
+                <div>API calls: {debugStats.totalApiCalls}</div>
+                <div>Last API: {debugStats.lastApiCall ? new Date(debugStats.lastApiCall).toLocaleTimeString() : 'Never'}</div>
+              </div>
+              
+              {/* Scroll Stats */}
+              <div className="mb-3">
+                <div className="text-cyan-400 font-semibold">SCROLL</div>
+                <div>Position: {Math.round((containerRef.current?.scrollTop || 0) / window.innerHeight * 100) / 100}</div>
                 <div>Height: {Math.round((window.innerHeight || 0) / 100) * 100}px</div>
+                <div>Events: {debugStats.scrollEvents}</div>
+                <div>Last event: {debugStats.lastScrollEvent ? new Date(debugStats.lastScrollEvent).toLocaleTimeString() : 'Never'}</div>
+                {containerRef.current && (
+                  <div>Scroll %: {Math.round((containerRef.current.scrollTop / (containerRef.current.scrollHeight - window.innerHeight)) * 100)}%</div>
+                )}
+              </div>
+              
+              {/* Recent Triggers */}
+              {debugStats.triggerHistory.length > 0 && (
+                <div className="mb-2">
+                  <div className="text-red-400 font-semibold">RECENT TRIGGERS</div>
+                  <div className="max-h-20 overflow-y-auto">
+                    {debugStats.triggerHistory.slice(-3).map((trigger, i) => (
+                      <div key={i} className="text-xs">
+                        {trigger.type}: {trigger.currentIndex}→{trigger.contentLength} ({new Date(trigger.timestamp).toLocaleTimeString()})
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Performance */}
+              <div className="text-xs text-gray-400 border-t border-white/20 pt-2">
+                Performance: {performance.now().toFixed(0)}ms
               </div>
             </div>
           )}
         </div>
       ))}
       
-      {isGenerating && (
-        <div className="h-screen w-full flex items-center justify-center snap-start relative bg-gray-900/30">
-          <div className="px-6 sm:px-8 md:px-12 lg:px-16 xl:px-20 py-12 flex items-center justify-center w-full">
-            <div className="text-center max-w-5xl w-full">
-              <div className="animate-spin w-12 h-12 border-2 border-white/30 border-t-white rounded-full mx-auto mb-8"></div>
-              <div className="text-white/70 text-base leading-relaxed font-normal italic transition-opacity duration-500">
-                {WAIT_MESSAGES[waitMessageIndex]}
+        {isGenerating && (
+          <div className="h-screen w-full flex items-center justify-center snap-start relative bg-gray-900/30">
+            <div className="px-6 sm:px-8 md:px-12 lg:px-16 xl:px-20 py-12 flex items-center justify-center w-full">
+              <div className="text-center max-w-5xl w-full">
+                <div className="animate-spin w-12 h-12 border-2 border-white/30 border-t-white rounded-full mx-auto mb-8"></div>
+                <div className="text-white/70 text-base leading-relaxed font-normal italic transition-opacity duration-500">
+                  {WAIT_MESSAGES[waitMessageIndex]}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
