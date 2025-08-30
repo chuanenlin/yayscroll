@@ -128,7 +128,7 @@ Format as:
 etc.`
             }
           ],
-          max_tokens: itemsToGenerate * 200, // Reduced tokens per item to save costs
+          max_tokens: itemsToGenerate * 400, // Higher per-item limit to prevent cutoff
         })
 
         const response = completion.choices[0]?.message?.content
