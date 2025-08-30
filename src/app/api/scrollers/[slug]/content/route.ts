@@ -86,16 +86,11 @@ export async function GET(
       const itemsToGenerate = 20 // Reduced batch size to save costs
       
       try {
-        // Use cheaper model without web search for most content
-        const useWebSearch = Math.random() < 0.3 // Only 30% of requests use web search
-        
         const completion = await openai.chat.completions.create({
-          model: useWebSearch ? "gpt-4o-search-preview" : "gpt-4o-mini",
-          ...(useWebSearch ? {
-            web_search_options: {
-              search_context_size: "small" // Reduced search context
-            }
-          } : {}),
+          model: "gpt-4o-search-preview",
+          web_search_options: {
+            search_context_size: "small" // Reduced search context to save costs
+          },
           messages: [
             {
               role: "system",
