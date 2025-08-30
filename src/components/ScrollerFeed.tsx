@@ -43,8 +43,8 @@ const WAIT_MESSAGES = [
   "Teaching machines the art of being interesting..."
 ]
 
-// Debug mode - can be toggled for troubleshooting
-const DEBUG_MODE = process.env.NODE_ENV === 'development'
+// Debug mode - always enabled for mobile testing (can be toggled later)
+const DEBUG_MODE = true // process.env.NODE_ENV === 'development'
 
 // Throttle utility for mobile scroll performance
 function throttle<T extends (...args: unknown[]) => void>(func: T, delay: number): T {
@@ -353,8 +353,19 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     <div className="relative">
       {/* Floating Debug Panel - always visible */}
       {DEBUG_MODE && (
-        <div className="fixed top-4 right-4 z-50 bg-black/98 text-white text-xs p-3 rounded-lg font-mono w-64 border border-white/30 shadow-lg">
-          <div className="text-green-400 font-bold mb-2">🔍 LIVE DEBUG</div>
+        <>
+          {/* High contrast debug indicator */}
+          <div className="fixed top-0 left-0 z-[9999] bg-red-500 text-white p-1 text-xs font-bold">
+            DEBUG: {content.length} items | Index: {currentIndex} | {isGenerating ? 'GENERATING' : 'IDLE'}
+          </div>
+          
+          {/* Simple mobile debug bar */}
+          <div className="fixed bottom-0 left-0 right-0 z-[9999] bg-blue-600 text-white p-2 text-sm font-bold text-center">
+            📊 API Calls: {debugStats.totalApiCalls} | Scroll: {debugStats.scrollEvents} | Trigger: {currentIndex >= content.length - 25 ? '🔴 READY' : '🟢 OK'}
+          </div>
+          
+          <div className="fixed top-2 right-2 z-[9999] bg-black text-white text-xs p-2 rounded font-mono w-56 border-2 border-green-500 shadow-2xl" style={{ backgroundColor: '#000000', zIndex: 999999 }}>
+            <div className="text-green-400 font-bold mb-1 text-center">🔍 DEBUG</div>
           
           <div className="space-y-1 text-xs">
             <div>Index: {currentIndex}/{content.length - 1}</div>
@@ -383,6 +394,7 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
             )}
           </div>
         </div>
+        </>
       )}
       
       <div 
