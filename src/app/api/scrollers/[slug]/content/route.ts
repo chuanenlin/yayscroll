@@ -54,9 +54,9 @@ export async function GET(
     const rateLimitKey = `rate_limit_${slug}`
     
     // Simple in-memory rate limiting (in production, use Redis)
-    const globalAny = global as Record<string, { lastCall: number; calls: number }>
-    if (!globalAny[rateLimitKey]) globalAny[rateLimitKey] = { lastCall: 0, calls: 0 }
-    const rateLimit = globalAny[rateLimitKey]
+    const globalCache = global as unknown as Record<string, { lastCall: number; calls: number }>
+    if (!globalCache[rateLimitKey]) globalCache[rateLimitKey] = { lastCall: 0, calls: 0 }
+    const rateLimit = globalCache[rateLimitKey]
     
     // Allow max 3 calls per minute per scroller
     if (now - rateLimit.lastCall < 60000 && rateLimit.calls >= 3) {
@@ -90,7 +90,7 @@ export async function GET(
         const completion = await openai.chat.completions.create({
           model: "gpt-4o-search-preview",
           web_search_options: {
-            search_context_size: "small" // Reduced search context to save costs
+            search_context_size: "low" // Reduced search context to save costs
           },
           messages: [
             {
