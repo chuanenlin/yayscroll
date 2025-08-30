@@ -43,6 +43,9 @@ const WAIT_MESSAGES = [
   "Teaching machines the art of being interesting..."
 ]
 
+// Debug mode - can be toggled for troubleshooting
+const DEBUG_MODE = process.env.NODE_ENV === 'development'
+
 interface ScrollerFeedProps {
   scrollerSlug: string
 }
@@ -96,11 +99,35 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     fetchContent()
   }, [scrollerSlug])
 
+  // Separate effect for content generation trigger to avoid infinite loops
   useEffect(() => {
     if (currentIndex >= content.length - 25 && content.length > 0 && !isGenerating) {
+      console.log('Triggering content generation:', { currentIndex, contentLength: content.length, isGenerating })
       fetchContent(true)
     }
-  }, [currentIndex, content.length, isGenerating])
+  }, [currentIndex]) // Only depend on currentIndex to avoid infinite loops
+
+  // Additional safety net: trigger content generation on scroll position too
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const checkScrollPosition = () => {
+      const scrollPosition = container.scrollTop
+      const windowHeight = window.innerHeight
+      const totalHeight = container.scrollHeight
+      const scrollPercentage = scrollPosition / (totalHeight - windowHeight)
+      
+      // If user has scrolled 80% through available content, load more
+      if (scrollPercentage > 0.8 && content.length > 0 && !isGenerating) {
+        console.log('Scroll percentage trigger:', { scrollPercentage, contentLength: content.length })
+        fetchContent(true)
+      }
+    }
+
+    container.addEventListener('scroll', checkScrollPosition, { passive: true })
+    return () => container.removeEventListener('scroll', checkScrollPosition)
+  }, [content.length, isGenerating])
 
   // Cycle through witty messages for initial loading
   useEffect(() => {
@@ -126,17 +153,26 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
   }, [isGenerating])
 
   const handleScroll = () => {
-    if (!containerRef.current || isKeyboardScrolling.current) return
+    if (!containerRef.current) return
+    
+    // Don't block mobile scroll during keyboard animation
+    if (isKeyboardScrolling.current) return
     
     const container = containerRef.current
     const scrollPosition = container.scrollTop
     const windowHeight = window.innerHeight
-    const newIndex = Math.round(scrollPosition / windowHeight)
+    
+    // More forgiving scroll detection for mobile momentum scrolling
+    const rawIndex = scrollPosition / windowHeight
+    const newIndex = Math.round(rawIndex)
     
     // Allow scrolling to the wait message scroll when generating
     const maxIndex = isGenerating ? content.length : content.length - 1
     
-    if (newIndex !== currentIndex && newIndex <= maxIndex) {
+    console.log('Scroll detected:', { scrollPosition, rawIndex, newIndex, currentIndex, maxIndex })
+    
+    if (newIndex !== currentIndex && newIndex >= 0 && newIndex <= maxIndex) {
+      console.log('Setting new index:', newIndex)
       setCurrentIndex(newIndex)
     }
   }
@@ -145,9 +181,10 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     const container = containerRef.current
     if (!container) return
 
-    container.addEventListener('scroll', handleScroll)
+    // Use passive scroll listener for better mobile performance
+    container.addEventListener('scroll', handleScroll, { passive: true })
     return () => container.removeEventListener('scroll', handleScroll)
-  }, [currentIndex])
+  }, [currentIndex, content.length, isGenerating]) // Include dependencies that handleScroll uses
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -232,6 +269,15 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
             />
           </div>
 
+          {/* Debug overlay for development */}
+          {DEBUG_MODE && (
+            <div className="absolute top-4 left-4 bg-black/80 text-white/80 text-xs p-2 rounded font-mono">
+              <div>Index: {index}/{content.length - 1}</div>
+              <div>Current: {currentIndex}</div>
+              <div>Generating: {isGenerating ? 'YES' : 'NO'}</div>
+              <div>Trigger at: {content.length - 25}</div>
+            </div>
+          )}
         </div>
       ))}
       
