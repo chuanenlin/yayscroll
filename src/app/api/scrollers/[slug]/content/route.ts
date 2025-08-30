@@ -54,8 +54,9 @@ export async function GET(
     const rateLimitKey = `rate_limit_${slug}`
     
     // Simple in-memory rate limiting (in production, use Redis)
-    if (!global[rateLimitKey]) global[rateLimitKey] = { lastCall: 0, calls: 0 }
-    const rateLimit = global[rateLimitKey]
+    const globalAny = global as Record<string, { lastCall: number; calls: number }>
+    if (!globalAny[rateLimitKey]) globalAny[rateLimitKey] = { lastCall: 0, calls: 0 }
+    const rateLimit = globalAny[rateLimitKey]
     
     // Allow max 3 calls per minute per scroller
     if (now - rateLimit.lastCall < 60000 && rateLimit.calls >= 3) {
