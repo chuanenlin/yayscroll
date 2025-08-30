@@ -90,6 +90,7 @@ export async function GET(
         const response = await openai.responses.create({
           model: "gpt-5",
           reasoning: { effort: "low" }, // Low effort to save costs
+          text: { verbosity: "low" }, // Low verbosity for faster responses
           tools: [
             {
               type: "web_search",
