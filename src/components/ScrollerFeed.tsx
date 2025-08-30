@@ -104,8 +104,10 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     
     try {
       if (!loadMore) {
+        console.log('🔄 Setting isLoading = true')
         setIsLoading(true)
       } else {
+        console.log('🔄 Setting isGenerating = true')
         setIsGenerating(true)
       }
       
@@ -156,6 +158,7 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     } catch (error) {
       console.error('❌ FETCH ERROR:', error)
     } finally {
+      console.log('🔄 Setting isLoading = false, isGenerating = false')
       setIsLoading(false)
       setIsGenerating(false)
     }
@@ -165,12 +168,22 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     fetchContent()
   }, [scrollerSlug])
 
-  // Stabilize fetchContent to prevent race conditions
-  const stableFetchContent = useCallback(fetchContent, [scrollerSlug, content.length, isGenerating])
+  // Stabilize fetchContent to prevent race conditions - remove isGenerating dependency
+  const stableFetchContent = useCallback(fetchContent, [scrollerSlug])
 
   // Separate effect for content generation trigger to avoid infinite loops
   useEffect(() => {
-    if (currentIndex >= content.length - 25 && content.length > 0 && !isGenerating) {
+    const shouldTrigger = currentIndex >= content.length - 25 && content.length > 0 && !isGenerating
+    
+    console.log('🔍 TRIGGER CHECK:', { 
+      currentIndex, 
+      threshold: content.length - 25, 
+      contentLength: content.length, 
+      isGenerating, 
+      shouldTrigger 
+    })
+    
+    if (shouldTrigger) {
       const trigger = { 
         type: 'INDEX_TRIGGER', 
         timestamp: new Date(), 
@@ -178,7 +191,7 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
         contentLength: content.length 
       }
       
-      console.log('🎯 INDEX TRIGGER:', trigger)
+      console.log('🎯 FIRING INDEX TRIGGER:', trigger)
       
       // Track trigger in history
       setDebugStats(prev => ({
@@ -188,7 +201,7 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
       
       stableFetchContent(true)
     }
-  }, [currentIndex, stableFetchContent, content.length, isGenerating])
+  }, [currentIndex, content.length, isGenerating, stableFetchContent])
 
   // Additional safety net: trigger content generation on scroll position too
   useEffect(() => {
@@ -209,7 +222,19 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
       }))
       
       // If user has scrolled 80% through available content, load more
-      if (scrollPercentage > 0.8 && content.length > 0 && !isGenerating) {
+      const shouldScrollTrigger = scrollPercentage > 0.8 && content.length > 0 && !isGenerating
+      
+      if (scrollPercentage > 0.7) { // Log when getting close
+        console.log('📜 SCROLL CHECK:', { 
+          scrollPercentage: scrollPercentage.toFixed(2), 
+          threshold: 0.8, 
+          contentLength: content.length, 
+          isGenerating, 
+          shouldScrollTrigger 
+        })
+      }
+      
+      if (shouldScrollTrigger) {
         const trigger = { 
           type: 'SCROLL_TRIGGER', 
           timestamp: new Date(), 
@@ -217,7 +242,7 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
           contentLength: content.length 
         }
         
-        console.log('📜 SCROLL TRIGGER:', { ...trigger, scrollPercentage, scrollPosition, totalHeight })
+        console.log('📜 FIRING SCROLL TRIGGER:', { ...trigger, scrollPercentage, scrollPosition, totalHeight })
         
         // Track trigger in history
         setDebugStats(prev => ({
@@ -363,7 +388,7 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
           
           {/* Simple mobile debug bar */}
           <div className="fixed bottom-0 left-0 right-0 z-[9999] bg-blue-600 text-white p-2 text-sm font-bold text-center">
-            📊 API Calls: {debugStats.totalApiCalls} | Scroll: {debugStats.scrollEvents} | Trigger: {currentIndex >= content.length - 25 ? '🔴 READY' : '🟢 OK'}
+            📊 API: {debugStats.totalApiCalls} | Scroll: {debugStats.scrollEvents} | Idx: {currentIndex} ≥ {content.length - 25}? | Gen: {isGenerating ? 'YES' : 'NO'} | Should: {currentIndex >= content.length - 25 && content.length > 0 && !isGenerating ? '🔴 FIRE' : '🟢 WAIT'}
           </div>
           
           <div className="fixed top-2 right-2 z-[9999] bg-black text-white text-xs p-2 rounded font-mono w-56 border-2 border-green-500 shadow-2xl" style={{ backgroundColor: '#000000', zIndex: 999999 }}>
