@@ -48,6 +48,25 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const loadMore = searchParams.get('loadMore') === 'true'
     const offset = parseInt(searchParams.get('offset') || '0')
+    
+    // Rate limiting to prevent excessive API calls
+    const now = Date.now()
+    const rateLimitKey = `rate_limit_${slug}`
+    
+    // Simple in-memory rate limiting (in production, use Redis)
+    if (!global[rateLimitKey]) global[rateLimitKey] = { lastCall: 0, calls: 0 }
+    const rateLimit = global[rateLimitKey]
+    
+    // Allow max 3 calls per minute per scroller
+    if (now - rateLimit.lastCall < 60000 && rateLimit.calls >= 3) {
+      return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
+    }
+    
+    if (now - rateLimit.lastCall >= 60000) {
+      rateLimit.calls = 0
+    }
+    rateLimit.calls++
+    rateLimit.lastCall = now
 
     // Initialize database connection
     await db.initialize()
@@ -63,15 +82,20 @@ export async function GET(
     let existingContent = await db.getAllContentItems(scroller.id)
 
     // Generate content if we need more (initial load or loadMore request)
-    if (existingContent.length < 50 || loadMore) {
-      const itemsToGenerate = 60 // Larger batches for smoother experience
+    if (existingContent.length < 30 || loadMore) {
+      const itemsToGenerate = 20 // Reduced batch size to save costs
       
       try {
+        // Use cheaper model without web search for most content
+        const useWebSearch = Math.random() < 0.3 // Only 30% of requests use web search
+        
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o-search-preview",
-          web_search_options: {
-            search_context_size: "medium"
-          },
+          model: useWebSearch ? "gpt-4o-search-preview" : "gpt-4o-mini",
+          ...(useWebSearch ? {
+            web_search_options: {
+              search_context_size: "small" // Reduced search context
+            }
+          } : {}),
           messages: [
             {
               role: "system",
@@ -109,7 +133,7 @@ Format as:
 etc.`
             }
           ],
-          max_tokens: itemsToGenerate * 300, // Slightly reduced per item to accommodate larger batches
+          max_tokens: itemsToGenerate * 200, // Reduced tokens per item to save costs
         })
 
         const response = completion.choices[0]?.message?.content

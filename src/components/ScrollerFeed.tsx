@@ -120,21 +120,20 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
   // Stabilize fetchContent to prevent race conditions
   const stableFetchContent = useCallback(fetchContent, [scrollerSlug])
 
-  // Aggressive preloading: trigger much earlier for seamless experience
+  // Balanced preloading: trigger earlier but not too aggressively to save costs
   useEffect(() => {
-    // Trigger at 50% through content instead of near the end (25 items from end)
-    const triggerPoint = Math.floor(content.length * 0.5)
-    const shouldTrigger = currentIndex >= triggerPoint && content.length > 0 && !isGenerating
+    // Trigger when 15 items from end (was 25 items, then 50%)
+    const shouldTrigger = currentIndex >= content.length - 15 && content.length > 0 && !isGenerating
     
     if (shouldTrigger) {
       stableFetchContent(true)
     }
   }, [currentIndex, content.length, isGenerating, stableFetchContent])
 
-  // Background buffer maintenance: ensure we always have enough content
+  // Reduced background maintenance to save costs
   useEffect(() => {
     const maintainBuffer = () => {
-      const bufferSize = 50 // Always keep at least 50 items ahead
+      const bufferSize = 20 // Reduced buffer to save API costs
       const itemsAhead = content.length - currentIndex
       
       if (itemsAhead < bufferSize && content.length > 0 && !isGenerating) {
@@ -142,7 +141,7 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
       }
     }
 
-    const interval = setInterval(maintainBuffer, 2000) // Check every 2 seconds
+    const interval = setInterval(maintainBuffer, 10000) // Check every 10 seconds (was 2)
     return () => clearInterval(interval)
   }, [currentIndex, content.length, isGenerating, stableFetchContent])
 
@@ -157,8 +156,8 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
       const totalHeight = container.scrollHeight
       const scrollPercentage = scrollPosition / (totalHeight - windowHeight)
       
-      // Early trigger at 60% scroll instead of 80% for more seamless experience
-      if (scrollPercentage > 0.6 && content.length > 0 && !isGenerating) {
+      // Conservative scroll trigger to reduce API calls
+      if (scrollPercentage > 0.85 && content.length > 0 && !isGenerating) {
         stableFetchContent(true)
       }
     }
