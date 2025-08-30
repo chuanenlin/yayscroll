@@ -63,8 +63,8 @@ export async function GET(
     let existingContent = await db.getAllContentItems(scroller.id)
 
     // Generate content if we need more (initial load or loadMore request)
-    if (existingContent.length < 20 || loadMore) {
-      const itemsToGenerate = 30
+    if (existingContent.length < 50 || loadMore) {
+      const itemsToGenerate = 60 // Larger batches for smoother experience
       
       try {
         const completion = await openai.chat.completions.create({
@@ -109,7 +109,7 @@ Format as:
 etc.`
             }
           ],
-          max_tokens: itemsToGenerate * 400,
+          max_tokens: itemsToGenerate * 300, // Slightly reduced per item to accommodate larger batches
         })
 
         const response = completion.choices[0]?.message?.content
@@ -221,9 +221,9 @@ etc.`
     // Sort by creation date (newest first)
     existingContent.sort((a: { created_at: string }, b: { created_at: string }) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
-    // Return paginated results
+    // Return paginated results - larger chunks for smoother scrolling
     const startIndex = offset
-    const endIndex = offset + 20
+    const endIndex = offset + 40 // Increased from 20 to 40 for better user experience
     return NextResponse.json(existingContent.slice(startIndex, endIndex))
   } catch (error) {
     console.error('Error fetching content:', error)

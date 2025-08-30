@@ -120,13 +120,30 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
   // Stabilize fetchContent to prevent race conditions
   const stableFetchContent = useCallback(fetchContent, [scrollerSlug])
 
-  // Trigger content generation when getting close to the end
+  // Aggressive preloading: trigger much earlier for seamless experience
   useEffect(() => {
-    const shouldTrigger = currentIndex >= content.length - 25 && content.length > 0 && !isGenerating
+    // Trigger at 50% through content instead of near the end (25 items from end)
+    const triggerPoint = Math.floor(content.length * 0.5)
+    const shouldTrigger = currentIndex >= triggerPoint && content.length > 0 && !isGenerating
     
     if (shouldTrigger) {
       stableFetchContent(true)
     }
+  }, [currentIndex, content.length, isGenerating, stableFetchContent])
+
+  // Background buffer maintenance: ensure we always have enough content
+  useEffect(() => {
+    const maintainBuffer = () => {
+      const bufferSize = 50 // Always keep at least 50 items ahead
+      const itemsAhead = content.length - currentIndex
+      
+      if (itemsAhead < bufferSize && content.length > 0 && !isGenerating) {
+        stableFetchContent(true)
+      }
+    }
+
+    const interval = setInterval(maintainBuffer, 2000) // Check every 2 seconds
+    return () => clearInterval(interval)
   }, [currentIndex, content.length, isGenerating, stableFetchContent])
 
   // Additional safety net: trigger content generation on scroll position too
@@ -140,8 +157,8 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
       const totalHeight = container.scrollHeight
       const scrollPercentage = scrollPosition / (totalHeight - windowHeight)
       
-      // If user has scrolled 80% through available content, load more
-      if (scrollPercentage > 0.8 && content.length > 0 && !isGenerating) {
+      // Early trigger at 60% scroll instead of 80% for more seamless experience
+      if (scrollPercentage > 0.6 && content.length > 0 && !isGenerating) {
         stableFetchContent(true)
       }
     }
