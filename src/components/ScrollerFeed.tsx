@@ -46,6 +46,8 @@ const WAIT_MESSAGES = [
 // Debug mode - always enabled for mobile testing (can be toggled later)
 const DEBUG_MODE = true // process.env.NODE_ENV === 'development'
 
+// Auto-push workflow: All edits will be automatically committed and pushed
+
 // Throttle utility for mobile scroll performance
 function throttle<T extends (...args: unknown[]) => void>(func: T, delay: number): T {
   let timeoutId: NodeJS.Timeout
