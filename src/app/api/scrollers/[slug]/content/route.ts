@@ -15,7 +15,6 @@ function isContentSimilar(newContent: string, existingContent: { content: string
     
     // If more than 30% overlap, consider it similar
     if (overlapRatio > 0.3) {
-      console.log(`Similar content detected: ${overlapRatio.toFixed(2)} overlap`)
       return true
     }
     
@@ -28,7 +27,6 @@ function isContentSimilar(newContent: string, existingContent: { content: string
     const existingText = existing.content.toLowerCase()
     for (const phrase of newPhrases) {
       if (existingText.includes(phrase)) {
-        console.log(`Exact phrase match detected: "${phrase}"`)
         return true
       }
     }
@@ -117,9 +115,6 @@ etc.`
         const response = completion.choices[0]?.message?.content
         const annotations = completion.choices[0]?.message?.annotations || []
         
-        console.log('AI Response:', response)
-        console.log('Annotations:', annotations)
-        
         if (response) {
           // Parse the numbered list - handle multi-line content properly
           const numberedSections = response.split(/\n(?=\d+\.)/g)
@@ -172,22 +167,18 @@ etc.`
                 }
               }
               
-              console.log('Processed item:', { content: section, urls })
               return { content: section, urls }
             })
 
-          console.log('All content lines processed:', contentLines)
           
           // Filter out similar content
           const uniqueContentLines = contentLines.filter(item => {
             if (isContentSimilar(item.content, existingContent)) {
-              console.log('Filtered out similar content:', item.content.substring(0, 100))
               return false
             }
             return true
           })
 
-          console.log(`Filtered ${contentLines.length - uniqueContentLines.length} similar items, keeping ${uniqueContentLines.length}`)
           
           // Determine content type for consistent sizing across this scroller
           const hasLongContent = uniqueContentLines.some(item => 
