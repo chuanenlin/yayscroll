@@ -87,19 +87,16 @@ export async function GET(
       const itemsToGenerate = 20 // Reduced batch size to save costs
       
       try {
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4o-search-preview",
-          web_search_options: {
-            search_context_size: "low" // Reduced search context to save costs
-          },
-          messages: [
+        const response = await openai.responses.create({
+          model: "gpt-5",
+          reasoning: { effort: "low" }, // Low effort to save costs
+          tools: [
             {
-              role: "system",
-              content: "You are a content generator for a TikTok-style infinite scroll app. Use web search to find current, accurate information. Generate multiple unique pieces of content. Keep formatting clean and readable. Each should be different, factual, and engaging. ALWAYS include clickable source links from your web search results to build trust and credibility. Use markdown link format: [Source Name](URL). Format your response as a numbered list."
-            },
-            {
-              role: "user",
-              content: `Generate ${itemsToGenerate} completely unique pieces of content for: ${scroller.prompt_template}
+              type: "web_search",
+            }
+          ],
+          tool_choice: "auto",
+          input: `You are a content generator for a TikTok-style infinite scroll app. Generate ${itemsToGenerate} completely unique pieces of content for: ${scroller.prompt_template}
 
 CRITICAL ANTI-REPETITION REQUIREMENTS:
 - Each item must be COMPLETELY UNIQUE - no similar topics, words, or themes
@@ -127,17 +124,13 @@ Format as:
 2. [content]
 3. [content]
 etc.`
-            }
-          ],
-          max_tokens: itemsToGenerate * 400, // Higher per-item limit to prevent cutoff
         })
 
-        const response = completion.choices[0]?.message?.content
-        const annotations = completion.choices[0]?.message?.annotations || []
+        const responseText = response.output_text
         
-        if (response) {
+        if (responseText) {
           // Parse the numbered list - handle multi-line content properly
-          const numberedSections = response.split(/\n(?=\d+\.)/g)
+          const numberedSections = responseText.split(/\n(?=\d+\.)/g)
           const contentLines = numberedSections
             .filter(section => /^\d+\./.test(section.trim()))
             .map(section => section.replace(/^\d+\.\s*/, '').trim())
