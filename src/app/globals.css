@@ -3,3 +3,27 @@
 @theme inline {
   --font-sans: var(--font-manrope);
 }
+
+/* Prevent zoom and improve mobile touch handling */
+html, body {
+  touch-action: pan-y pinch-zoom;
+  -webkit-text-size-adjust: none;
+  -ms-text-size-adjust: none;
+  text-size-adjust: none;
+}
+
+/* Prevent zoom on input focus (iOS Safari) */
+input, textarea, select {
+  font-size: 16px !important;
+}
+
+/* Disable double-tap zoom */
+* {
+  touch-action: manipulation;
+}
+
+/* Specific touch handling for scroll containers */
+.scroll-container {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}

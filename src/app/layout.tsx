@@ -13,6 +13,13 @@ export const metadata: Metadata = {
   description: "Create your own infinite scroll feed of AI-generated content",
 };
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

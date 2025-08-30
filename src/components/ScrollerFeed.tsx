@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { ContentItem } from '@/lib/types'
 import ContentDisplay from './ContentDisplay'
 
@@ -45,6 +45,25 @@ const WAIT_MESSAGES = [
 
 // Debug mode - can be toggled for troubleshooting
 const DEBUG_MODE = process.env.NODE_ENV === 'development'
+
+// Throttle utility for mobile scroll performance
+function throttle<T extends (...args: unknown[]) => void>(func: T, delay: number): T {
+  let timeoutId: NodeJS.Timeout
+  let lastExecTime = 0
+  return function (...args: Parameters<T>) {
+    const currentTime = Date.now()
+    if (currentTime - lastExecTime > delay) {
+      func(...args)
+      lastExecTime = currentTime
+    } else {
+      clearTimeout(timeoutId)
+      timeoutId = setTimeout(() => {
+        func(...args)
+        lastExecTime = Date.now()
+      }, delay)
+    }
+  } as T
+}
 
 interface ScrollerFeedProps {
   scrollerSlug: string
@@ -99,13 +118,16 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     fetchContent()
   }, [scrollerSlug])
 
+  // Stabilize fetchContent to prevent race conditions
+  const stableFetchContent = useCallback(fetchContent, [scrollerSlug, content.length, isGenerating])
+
   // Separate effect for content generation trigger to avoid infinite loops
   useEffect(() => {
     if (currentIndex >= content.length - 25 && content.length > 0 && !isGenerating) {
-      console.log('Triggering content generation:', { currentIndex, contentLength: content.length, isGenerating })
-      fetchContent(true)
+      console.log('Index-based trigger:', { currentIndex, contentLength: content.length, isGenerating, trigger: content.length - 25 })
+      stableFetchContent(true)
     }
-  }, [currentIndex]) // Only depend on currentIndex to avoid infinite loops
+  }, [currentIndex, stableFetchContent, content.length, isGenerating])
 
   // Additional safety net: trigger content generation on scroll position too
   useEffect(() => {
@@ -120,14 +142,15 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
       
       // If user has scrolled 80% through available content, load more
       if (scrollPercentage > 0.8 && content.length > 0 && !isGenerating) {
-        console.log('Scroll percentage trigger:', { scrollPercentage, contentLength: content.length })
-        fetchContent(true)
+        console.log('Scroll percentage trigger:', { scrollPercentage, contentLength: content.length, totalHeight, scrollPosition })
+        stableFetchContent(true)
       }
     }
 
-    container.addEventListener('scroll', checkScrollPosition, { passive: true })
-    return () => container.removeEventListener('scroll', checkScrollPosition)
-  }, [content.length, isGenerating])
+    const throttledCheck = throttle(checkScrollPosition, 100) // Throttle to prevent excessive calls
+    container.addEventListener('scroll', throttledCheck, { passive: true })
+    return () => container.removeEventListener('scroll', throttledCheck)
+  }, [content.length, isGenerating, stableFetchContent])
 
   // Cycle through witty messages for initial loading
   useEffect(() => {
@@ -152,7 +175,8 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     }
   }, [isGenerating])
 
-  const handleScroll = () => {
+  // Use useCallback to stabilize scroll handler and prevent constant re-registration
+  const handleScroll = useCallback(() => {
     if (!containerRef.current) return
     
     // Don't block mobile scroll during keyboard animation
@@ -169,14 +193,15 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     // Allow scrolling to the wait message scroll when generating
     const maxIndex = isGenerating ? content.length : content.length - 1
     
-    console.log('Scroll detected:', { scrollPosition, rawIndex, newIndex, currentIndex, maxIndex })
+    console.log('Scroll detected:', { scrollPosition, rawIndex, newIndex, currentIndex, maxIndex, contentLength: content.length })
     
     if (newIndex !== currentIndex && newIndex >= 0 && newIndex <= maxIndex) {
       console.log('Setting new index:', newIndex)
       setCurrentIndex(newIndex)
     }
-  }
+  }, [currentIndex, content.length, isGenerating])
 
+  // Stable scroll listener registration
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -184,7 +209,7 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     // Use passive scroll listener for better mobile performance
     container.addEventListener('scroll', handleScroll, { passive: true })
     return () => container.removeEventListener('scroll', handleScroll)
-  }, [currentIndex, content.length, isGenerating]) // Include dependencies that handleScroll uses
+  }, [handleScroll])
 
   // Handle keyboard navigation
   useEffect(() => {
@@ -247,7 +272,7 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
   return (
     <div 
       ref={containerRef}
-      className="h-screen overflow-y-scroll snap-y snap-mandatory bg-black"
+      className="h-screen overflow-y-scroll snap-y snap-mandatory bg-black scroll-container"
       style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
     >
       <style jsx>{`
@@ -271,11 +296,16 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
 
           {/* Debug overlay for development */}
           {DEBUG_MODE && (
-            <div className="absolute top-4 left-4 bg-black/80 text-white/80 text-xs p-2 rounded font-mono">
-              <div>Index: {index}/{content.length - 1}</div>
+            <div className="absolute top-4 left-4 bg-black/90 text-white text-xs p-3 rounded font-mono max-w-64">
+              <div>Card: {index}/{content.length - 1}</div>
               <div>Current: {currentIndex}</div>
               <div>Generating: {isGenerating ? 'YES' : 'NO'}</div>
-              <div>Trigger at: {content.length - 25}</div>
+              <div>Trigger at: ≥{content.length - 25}</div>
+              <div>Should trigger: {currentIndex >= content.length - 25 ? 'YES' : 'NO'}</div>
+              <div className="mt-1 pt-1 border-t border-white/20">
+                <div>Scroll: {Math.round((containerRef.current?.scrollTop || 0) / window.innerHeight * 100) / 100}</div>
+                <div>Height: {Math.round((window.innerHeight || 0) / 100) * 100}px</div>
+              </div>
             </div>
           )}
         </div>
