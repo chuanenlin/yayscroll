@@ -102,14 +102,14 @@ export async function GET(
     if (rateLimit.isGenerating && rateLimit.generationStartTime) {
       const generationAge = now - rateLimit.generationStartTime
       if (generationAge < 60000) { // 1 minute timeout
-        console.log('⚠️ [API] Already generating content, waiting for completion...')
-        // Wait for a bit and return existing content
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        console.log('⚠️ [API] Already generating content, blocking concurrent request...')
+        // Wait longer for the other request to complete, then return what exists
+        await new Promise(resolve => setTimeout(resolve, 4000)) // Wait 4 seconds for generation to complete
         let existingContent = await db.getAllContentItems(scroller.id)
         const startIndex = offset
-        const endIndex = offset + 20 // Return 20 items, not 40
+        const endIndex = offset + 20
         const paginatedContent = existingContent.slice(startIndex, endIndex)
-        console.log(`📄 [API] Returning ${paginatedContent.length} items while waiting for generation`)
+        console.log(`📄 [API] Returning ${paginatedContent.length} items after waiting for concurrent generation`)
         return NextResponse.json(paginatedContent)
       } else {
         // Clear stale generation lock
