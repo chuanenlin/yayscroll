@@ -90,6 +90,14 @@ export async function GET(
     }
     const rateLimit = globalCache[rateLimitKey]
     
+    // Initialize database connection and get scroller first
+    await db.initialize()
+    const scroller = await db.getScrollerBySlug(slug)
+
+    if (!scroller) {
+      return NextResponse.json({ error: 'Scroller not found' }, { status: 404 })
+    }
+    
     // Check if already generating (prevent concurrent generation)
     if (rateLimit.isGenerating && rateLimit.generationStartTime) {
       const generationAge = now - rateLimit.generationStartTime
@@ -120,16 +128,6 @@ export async function GET(
     }
     rateLimit.calls++
     rateLimit.lastCall = now
-
-    // Initialize database connection
-    await db.initialize()
-
-    // Get scroller
-    const scroller = await db.getScrollerBySlug(slug)
-
-    if (!scroller) {
-      return NextResponse.json({ error: 'Scroller not found' }, { status: 404 })
-    }
 
     // Get existing content
     let existingContent = await db.getAllContentItems(scroller.id)
