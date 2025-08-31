@@ -88,7 +88,7 @@ export async function GET(
       
       try {
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o-search-preview",
+          model: "gpt-4o-mini-search-preview",
           web_search_options: {
             search_context_size: "low",
           },
