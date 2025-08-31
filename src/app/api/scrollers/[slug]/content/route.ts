@@ -143,32 +143,24 @@ etc.`
             .map(section => section.replace(/^\d+\.\s*/, '').trim())
             .filter(section => section.length > 0)
             .map(section => {
-              // Store original URLs for clickable links
+              // Extract sources from annotations instead of parsing markdown
               const urls: Array<{ text: string; url: string }> = []
-              let urlIndex = 0
               
-              // Extract URLs and replace with placeholders
-              section = section.replace(/\(\[([^\]]+)\]\(([^)]+)\)\)/g, (match, text, url) => {
-                urls.push({ text, url })
-                return `__URL_${urlIndex++}__`
+              // Get sources from API annotations
+              annotations.forEach((annotation: any) => {
+                if (annotation.type === 'url_citation' && annotation.url_citation) {
+                  const citation = annotation.url_citation
+                  urls.push({
+                    text: citation.title || new URL(citation.url).hostname,
+                    url: citation.url
+                  })
+                }
               })
               
-              section = section.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, url) => {
-                urls.push({ text, url })
-                return `__URL_${urlIndex++}__`
-              })
-              
-              section = section.replace(/\(https?:\/\/([^)]+)\)/g, (match, url) => {
-                const domain = url.split('/')[0]
-                urls.push({ text: domain, url: `https://${url}` })
-                return `__URL_${urlIndex++}__`
-              })
-              
-              section = section.replace(/\(www\.([^)]+)\)/g, (match, url) => {
-                const domain = url.split('/')[0]
-                urls.push({ text: domain, url: `https://${url}` })
-                return `__URL_${urlIndex++}__`
-              })
+              // Clean up any existing markdown links in content
+              section = section.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
+              section = section.replace(/\(https?:\/\/[^)]+\)/g, '')
+              section = section.replace(/\(www\.[^)]+\)/g, '')
               
               // Preserve code blocks and multi-line content
               if (!section.includes('```')) {
