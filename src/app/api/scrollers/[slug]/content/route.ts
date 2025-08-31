@@ -72,7 +72,6 @@ export async function GET(
       try {
         const completion = await openai.chat.completions.parse({
           model: "gpt-4o-mini-search-preview",
-          timeout: 25000, // 25 second timeout for OpenAI API
           messages: [
             {
               role: "system",
