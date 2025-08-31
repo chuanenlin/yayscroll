@@ -74,17 +74,18 @@ export async function GET(
               content: `Generate ${itemsToGenerate} completely unique pieces of content for: ${scroller.prompt_template}
 
 CRITICAL ANTI-REPETITION REQUIREMENTS:
-- Each item must be COMPLETELY UNIQUE - no similar topics, words, or themes
-- Study the existing content below and avoid ANY repetition of topics, examples, or concepts
-- Use diverse vocabulary, examples, and approaches that are different from existing content
-- If this is vocabulary/definitions: use completely different words than those already covered
-- If this is facts: cover different subjects/areas/categories entirely from what exists
-- NEVER reuse the same examples, quotes, statistics, or specific details${existingContent.length > 0 ? `
+- Each item must be UNIQUE - avoid repeating the exact same content, examples, or specific details
+- Study the existing content below and generate NEW items within the same category/theme
+- Stay within the topic area but choose different specific items, words, facts, or examples
+- If this is vocabulary: use different words than those already covered (but stay within vocabulary)
+- If this is facts/records: cover different specific facts/records (but stay within the same domain)
+- If this is tips/advice: give different specific tips (but stay within the same subject area)
+- NEVER reuse the exact same examples, quotes, statistics, words, or specific details${existingContent.length > 0 ? `
 
-EXISTING CONTENT TO STUDY AND AVOID REPEATING (${existingContent.length} items total):
+EXISTING CONTENT TO STUDY AND AVOID DUPLICATING (${existingContent.length} items total):
 ${existingContent.slice(-25).map((item: { content: string }, index: number) => `${index + 1}. ${item.content}`).join('\n\n')}
 
-INSTRUCTION: Generate content that is completely different from ALL the above examples. Use different topics, different examples, different vocabulary, and different approaches.` : ''}
+INSTRUCTION: Generate NEW content within the same category as above, but avoid duplicating any of the specific items, words, examples, or details already covered.` : ''}
 
 CONTENT LENGTH GUIDANCE:
 - DEFAULT: Keep content short (1-2 sentences, like a tweet) for easy mobile scrolling
