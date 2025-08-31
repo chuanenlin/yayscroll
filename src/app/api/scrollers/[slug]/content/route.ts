@@ -7,8 +7,8 @@ import { zodResponseFormat } from 'openai/helpers/zod'
 // Define the structured output schema
 const ContentItem = z.object({
   content: z.string().describe("The main content text without any source citations or links"),
-  source_title: z.string().optional().describe("The title or name of the source (if any)"),
-  source_url: z.string().optional().describe("The URL of the source (if any)")
+  source_title: z.string().nullable().describe("The title or name of the source (null if no source)"),
+  source_url: z.string().nullable().describe("The URL of the source (null if no source)")
 })
 
 const ContentResponse = z.object({
@@ -103,6 +103,7 @@ CONTENT LENGTH GUIDANCE:
 STRUCTURED OUTPUT INSTRUCTIONS:
 - Put ONLY the main content in the "content" field - NO source citations, links, or "Source:" text
 - If you know a credible source, put the source name in "source_title" and URL in "source_url"
+- If no source is known, set "source_title" and "source_url" to null
 - Keep content clean and readable without any citation clutter
 - Use markdown formatting in content when needed (code blocks, bold, etc.)
 
@@ -128,7 +129,7 @@ Each item should be:
           const processedItems = parsedResponse.items.map((item) => {
             // Prepare source URLs array
             const urls: Array<{ text: string; url: string }> = []
-            if (item.source_title && item.source_url) {
+            if (item.source_title !== null && item.source_url !== null) {
               urls.push({
                 text: item.source_title,
                 url: item.source_url
