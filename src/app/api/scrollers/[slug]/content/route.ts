@@ -90,7 +90,7 @@ export async function GET(
         const completion = await openai.chat.completions.create({
           model: "gpt-4o-mini-search-preview",
           web_search_options: {
-            search_context_size: "low",
+            search_context_size: "medium",
           },
           messages: [
             {
@@ -129,7 +129,7 @@ Format as:
 etc.`
             }
           ],
-          max_tokens: itemsToGenerate * 400, // Higher per-item limit to prevent cutoff
+          max_tokens: 16000, // High limit to ensure complete responses, especially for code
         })
 
         const response = completion.choices[0]?.message?.content
@@ -153,11 +153,43 @@ etc.`
           })
           
           // Parse the numbered list - handle multi-line content properly
-          const numberedSections = response.split(/\n(?=\d+\.)/g)
-          const contentLines = numberedSections
-            .filter(section => /^\d+\./.test(section.trim()))
-            .map(section => section.replace(/^\d+\.\s*/, '').trim())
-            .filter(section => section.length > 0)
+          // More robust parsing that preserves code blocks and multi-line content
+          const contentLines: string[] = []
+          const lines = response.split('\n')
+          let currentSection = ''
+          let inCodeBlock = false
+          
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i]
+            
+            // Track code block boundaries
+            if (line.includes('```')) {
+              inCodeBlock = !inCodeBlock
+            }
+            
+            // Check if this is a new numbered item (only when not in code block)
+            if (!inCodeBlock && /^\d+\.\s/.test(line.trim())) {
+              // Save previous section if it exists
+              if (currentSection.trim()) {
+                contentLines.push(currentSection.trim())
+              }
+              // Start new section (remove the number)
+              currentSection = line.replace(/^\d+\.\s*/, '').trim()
+            } else {
+              // Add to current section
+              if (currentSection || line.trim()) {
+                currentSection += (currentSection ? '\n' : '') + line
+              }
+            }
+          }
+          
+          // Don't forget the last section
+          if (currentSection.trim()) {
+            contentLines.push(currentSection.trim())
+          }
+          
+          // Filter out empty sections
+          const validContentLines = contentLines.filter(section => section.length > 0)
             .map((section, itemIndex) => {
               // Find the most relevant source for this specific content item
               let bestSource = null
@@ -214,7 +246,7 @@ etc.`
 
           
           // Filter out similar content
-          const uniqueContentLines = contentLines.filter(item => {
+          const uniqueContentLines = validContentLines.filter(item => {
             if (isContentSimilar(item.content, existingContent)) {
               return false
             }

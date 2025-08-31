@@ -131,9 +131,9 @@ export default function ContentDisplay({ content, urls = [], contentType }: Cont
         <div className="mt-3">
           <div className="flex flex-wrap gap-3">
             {urls.map((urlData, index) => {
-              // Show title and truncate if too long
-              const displayText = urlData.text.length > 50 
-                ? urlData.text.substring(0, 47) + '...'
+              // Show title and truncate if too long (increased limit)
+              const displayText = urlData.text.length > 80 
+                ? urlData.text.substring(0, 77) + '...'
                 : urlData.text
               
               return (
@@ -142,7 +142,7 @@ export default function ContentDisplay({ content, urls = [], contentType }: Cont
                   href={urlData.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-white/30 hover:text-white/60 text-xs underline underline-offset-2 transition-colors duration-200"
+                  className="text-white/30 hover:text-white/60 text-xs transition-colors duration-200"
                 >
                   {displayText}
                 </a>
