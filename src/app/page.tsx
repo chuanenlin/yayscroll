@@ -85,7 +85,7 @@ export default function Home() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-32 sm:py-36">
         {/* Title */}
-        <h1 className="text-5xl sm:text-6xl md:text-7xl font-light text-white mb-8 text-center tracking-tight leading-none">
+        <h1 className="text-6xl sm:text-6xl md:text-7xl font-light text-white mb-8 text-center tracking-tight leading-none">
           Doomscroll Everything
         </h1>
         
@@ -165,9 +165,9 @@ export default function Home() {
               type="submit"
               disabled={isLoading}
               className="px-6 py-4 bg-gray-100 text-gray-800 text-base font-medium rounded-xl hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 border border-gray-300 hover:border-gray-400 shadow-lg hover:shadow-xl whitespace-nowrap flex items-center justify-center"
-              style={{ minHeight: '56px', marginTop: '-2px' }}
+              style={{ minHeight: '56px', marginTop: '-2px', minWidth: '100px' }}
             >
-              Scroll
+              {isLoading ? 'Scrolling...' : 'Scroll'}
             </button>
           </div>
         </form>
