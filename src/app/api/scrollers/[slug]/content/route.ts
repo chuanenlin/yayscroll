@@ -19,6 +19,44 @@ interface Params {
   slug: string
 }
 
+// Debug mode placeholder content generator
+function generatePlaceholderContent(scrollerTitle: string, count: number, startIndex: number): Array<{
+  scroller_id: string
+  content: string
+  metadata?: {
+    urls?: Array<{ text: string; url: string }>
+    contentType?: 'short' | 'detailed'
+  }
+}> {
+  const placeholderItems = []
+  
+  for (let i = 0; i < count; i++) {
+    const scrollNumber = startIndex + i + 1
+    const content = `🧪 **Debug Scroll #${scrollNumber}**
+
+${scrollerTitle} - Testing placeholder content
+
+Generated: ${new Date().toLocaleTimeString()}
+ID: ${Math.random().toString(36).substring(2, 8)}
+
+This is debug content that fits in one scroll section for testing the infinite scroll behavior without API costs.`
+
+    placeholderItems.push({
+      scroller_id: '', // Will be set by caller
+      content,
+      metadata: {
+        urls: Math.random() > 0.7 ? [{
+          text: `Debug Source ${scrollNumber}`,
+          url: `https://example.com/debug-${scrollNumber}`
+        }] : [],
+        contentType: 'short' as const
+      }
+    })
+  }
+  
+  return placeholderItems
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<Params> }
@@ -31,17 +69,49 @@ export async function GET(
     
     console.log(`🔥 [API] Request: slug=${slug}, loadMore=${loadMore}, offset=${offset}`)
     
+    // Check if debug mode is enabled first
+    const isDebugMode = process.env.DEBUG_MODE === 'true'
+    
     // Rate limiting to prevent excessive API calls
     const now = Date.now()
     const rateLimitKey = `rate_limit_${slug}`
     
-    // Simple in-memory rate limiting (in production, use Redis)
-    const globalCache = global as unknown as Record<string, { lastCall: number; calls: number }>
-    if (!globalCache[rateLimitKey]) globalCache[rateLimitKey] = { lastCall: 0, calls: 0 }
+    // Simple in-memory rate limiting and generation tracking (in production, use Redis)
+    const globalCache = global as unknown as Record<string, { 
+      lastCall: number; 
+      calls: number; 
+      isGenerating?: boolean;
+      generationStartTime?: number;
+    }>
+    
+    // Reset rate limit for debug testing
+    if (isDebugMode || !globalCache[rateLimitKey]) {
+      globalCache[rateLimitKey] = { lastCall: 0, calls: 0 }
+    }
     const rateLimit = globalCache[rateLimitKey]
     
-    // Allow max 10 calls per minute per scroller (increased for testing)
-    if (now - rateLimit.lastCall < 60000 && rateLimit.calls >= 10) {
+    // Check if already generating (prevent concurrent generation)
+    if (rateLimit.isGenerating && rateLimit.generationStartTime) {
+      const generationAge = now - rateLimit.generationStartTime
+      if (generationAge < 60000) { // 1 minute timeout
+        console.log('⚠️ [API] Already generating content, waiting for completion...')
+        // Wait for a bit and return existing content
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        let existingContent = await db.getAllContentItems(scroller.id)
+        const startIndex = offset
+        const endIndex = offset + 20 // Return 20 items, not 40
+        const paginatedContent = existingContent.slice(startIndex, endIndex)
+        console.log(`📄 [API] Returning ${paginatedContent.length} items while waiting for generation`)
+        return NextResponse.json(paginatedContent)
+      } else {
+        // Clear stale generation lock
+        rateLimit.isGenerating = false
+        delete rateLimit.generationStartTime
+      }
+    }
+    
+    // Allow max 50 calls per minute per scroller for debug testing (increased from 10)
+    if (now - rateLimit.lastCall < 60000 && rateLimit.calls >= 50) {
       return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
     }
     
@@ -64,13 +134,64 @@ export async function GET(
     // Get existing content
     let existingContent = await db.getAllContentItems(scroller.id)
     console.log(`📊 [API] Current content count: ${existingContent.length}`)
+    console.log(`🧪 [API] Debug mode: ${isDebugMode ? 'ENABLED' : 'DISABLED'}`)
 
-    // Generate content if we need more (initial load or loadMore request)
-    if (existingContent.length < 30 || loadMore) {
+    // For initial load, always generate content if we have less than 20 items
+    // For loadMore, only generate if we need more content beyond what's requested
+    const needsGeneration = (!loadMore && existingContent.length < 20) || 
+                           (loadMore && existingContent.length < offset + 40)
+    
+    if (needsGeneration) {
+      // Set generation lock
+      rateLimit.isGenerating = true
+      rateLimit.generationStartTime = now
+      
       const itemsToGenerate = 20 // Reduced batch size to save costs
+      console.log(`🔧 [API] Need to generate content: loadMore=${loadMore}, existing=${existingContent.length}, offset=${offset}`)
       
       try {
-        const completion = await openai.chat.completions.parse({
+        if (isDebugMode) {
+        // DEBUG MODE: Generate placeholder content with simulated delay
+        console.log(`🧪 [API] Generating ${itemsToGenerate} placeholder items (simulating 30s delay)...`)
+        
+        // Simulate API delay (reduced for testing - change to 30000 for full simulation)
+        await new Promise(resolve => setTimeout(resolve, 3000)) // 3 seconds for easier testing
+        
+        // Use the total number of existing content as the starting index for numbering
+        const placeholderItems = generatePlaceholderContent(scroller.title, itemsToGenerate, existingContent.length)
+        
+        // Set the scroller_id for all items
+        const processedItems = placeholderItems.map(item => ({
+          ...item,
+          scroller_id: scroller.id
+        }))
+
+        // Filter out duplicates (though unlikely with debug content)
+        const existingContentSet = new Set(existingContent.map(item => item.content.trim()))
+        const uniqueItems = processedItems.filter(item => {
+          const content = item.content.trim()
+          if (existingContentSet.has(content)) {
+            return false
+          }
+          existingContentSet.add(content)
+          return true
+        })
+        
+        console.log(`🧪 [API] Generated ${uniqueItems.length} unique placeholder items`)
+
+        // Insert new unique items
+        if (uniqueItems.length > 0) {
+          console.log(`💾 Saving ${uniqueItems.length} placeholder items to database`)
+          const insertedItems = await db.addContentItems(uniqueItems)
+          if (insertedItems.length > 0) {
+            console.log(`✅ Successfully saved ${insertedItems.length} placeholder items`)
+            // Refresh from database to ensure consistent ordering
+            existingContent = await db.getAllContentItems(scroller.id)
+          }
+        }
+        } else {
+          // PRODUCTION MODE: Use OpenAI API
+          const completion = await openai.chat.completions.parse({
           model: "gpt-4o-mini-search-preview",
           messages: [
             {
@@ -175,12 +296,13 @@ Each item should be:
               existingContent = await db.getAllContentItems(scroller.id)
             }
           }
-        } else {
-          console.log('⚠️ No structured response received from OpenAI')
-        }
-      } catch (error) {
-        console.error('Error generating content:', error)
-        // Add fallback content if OpenAI fails
+          } else {
+            console.log('⚠️ No structured response received from OpenAI')
+          }
+        } 
+      } catch (generationError) {
+        console.error('Generation failed:', generationError)
+        // Add fallback content if generation fails
         const existingContentSet = new Set(existingContent.map(item => item.content.trim()))
         const fallbackItems = []
         
@@ -200,19 +322,28 @@ Each item should be:
           // Refresh from database to ensure consistent ordering
           existingContent = await db.getAllContentItems(scroller.id)
         }
+      } finally {
+        // Clear generation lock
+        rateLimit.isGenerating = false
+        delete rateLimit.generationStartTime
       }
     }
 
-    // Sort by creation date (newest first)
-    existingContent.sort((a: { created_at: string }, b: { created_at: string }) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-
-    // Return paginated results - larger chunks for smoother scrolling
+    // Database now returns items in chronological order, no need to sort again
+    
+    // For infinite scroll, return content starting from the offset
     const startIndex = offset
-    const endIndex = offset + 40 // Increased from 20 to 40 for better user experience
+    // For initial load (offset=0), return 20 items. For loadMore, return 20 items.
+    const itemsToReturn = loadMore ? 20 : 20
+    const endIndex = startIndex + itemsToReturn
     const paginatedContent = existingContent.slice(startIndex, endIndex)
     
     console.log(`📄 [API] Returning ${paginatedContent.length} items (${startIndex}-${endIndex-1}) from ${existingContent.length} total`)
-    console.log(`📄 [API] First item: ${paginatedContent[0]?.id} - "${paginatedContent[0]?.content?.substring(0, 50)}..."`)
+    console.log(`📄 [API] Content range: #${startIndex + 1} to #${Math.min(startIndex + paginatedContent.length, existingContent.length)}`)
+    if (paginatedContent.length > 0) {
+      console.log(`📄 [API] First item: ${paginatedContent[0]?.id} - "${paginatedContent[0]?.content?.substring(0, 30)}..."`)
+      console.log(`📄 [API] Last item: ${paginatedContent[paginatedContent.length - 1]?.id} - "${paginatedContent[paginatedContent.length - 1]?.content?.substring(0, 30)}..."`)
+    }
     
     return NextResponse.json(paginatedContent)
   } catch (error) {

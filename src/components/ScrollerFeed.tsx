@@ -43,6 +43,19 @@ const WAIT_MESSAGES = [
   "Teaching machines the art of being interesting..."
 ]
 
+const DEBUG_WAIT_MESSAGES = [
+  "🧪 DEBUG MODE: Simulating 30-second loading delay...",
+  "🧪 Testing scroll behavior with placeholder content...",
+  "🧪 Generating debug scrolls (Scroll #1, #2, #3...)...",
+  "🧪 Simulating real API loading time for testing...",
+  "🧪 Debug mode active - no GPT costs here!",
+  "🧪 Creating placeholder content for scroll testing...",
+  "🧪 Debugging infinite scroll without API calls...",
+  "🧪 Simulating content generation delays...",
+  "🧪 Testing loading states with fake content...",
+  "🧪 Debug scrolls incoming... almost ready!"
+]
+
 // Throttle utility for mobile scroll performance
 function throttle<T extends (...args: unknown[]) => void>(func: T, delay: number): T {
   let timeoutId: NodeJS.Timeout
@@ -75,27 +88,42 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
   const isKeyboardScrolling = useRef(false)
   const [creationMessageIndex, setCreationMessageIndex] = useState(0)
   const [waitMessageIndex, setWaitMessageIndex] = useState(0)
+  const [isDebugMode, setIsDebugMode] = useState(false)
+  const lastLoadMoreOffset = useRef<number>(-1) // Prevent duplicate requests
+  const contentRef = useRef<ContentItem[]>([]) // Keep current reference
 
   const fetchContent = async (loadMore = false) => {
     try {
-      if (!loadMore) {
-        setIsLoading(true)
-      } else {
+      // Use current content length from ref
+      const currentContentLength = contentRef.current.length
+      
+      // Prevent duplicate loadMore requests
+      if (loadMore) {
+        if (lastLoadMoreOffset.current === currentContentLength) {
+          console.log(`⚠️ [CLIENT] Preventing duplicate loadMore request for offset ${currentContentLength}`)
+          return
+        }
+        lastLoadMoreOffset.current = currentContentLength
         setIsGenerating(true)
+      } else {
+        setIsLoading(true)
       }
       
       const params = new URLSearchParams()
       if (loadMore) {
         params.append('loadMore', 'true')
-        params.append('offset', content.length.toString())
+        params.append('offset', currentContentLength.toString())
+        console.log(`🔄 [CLIENT] Load more request: offset=${currentContentLength}, currentContent=${currentContentLength}`)
+      } else {
+        console.log(`🔄 [CLIENT] Initial load request`)
       }
       const url = `/api/scrollers/${scrollerSlug}/content${params.toString() ? '?' + params.toString() : ''}`
       console.log(`📡 [CLIENT] Making request: ${url}`)
       console.log(`📊 [CLIENT] Current state: ${content.length} items, currentIndex=${currentIndex}`)
       
-      // Add timeout to prevent getting stuck
+      // Add timeout to prevent getting stuck - longer than server delay
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 35000) // 35 second timeout (server uses 30s)
       
       const response = await fetch(url, {
         signal: controller.signal
@@ -107,19 +135,34 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
         console.log(`📦 [CLIENT] Received ${newContent.length} items, loadMore=${loadMore}`)
         console.log(`📦 [CLIENT] First item ID: ${newContent[0]?.id}, content preview: "${newContent[0]?.content?.substring(0, 50)}..."`)
         
+        // Detect debug mode from content
+        if (newContent.length > 0 && newContent[0]?.content?.includes('🧪 DEBUG MODE')) {
+          setIsDebugMode(true)
+          console.log('🧪 [CLIENT] Debug mode detected from content')
+        }
+        
         setContent(prev => {
+          let newContentArray
           if (loadMore) {
-            // Filter out any content that already exists to prevent duplicates
+            // For load more, append new content to the end
             const existingIds = new Set(prev.map(item => item.id))
             const uniqueNewContent = newContent.filter((item: ContentItem) => !existingIds.has(item.id))
             console.log(`🔍 [CLIENT] Filtered: ${newContent.length} → ${uniqueNewContent.length} unique items`)
             if (uniqueNewContent.length === 0) {
               console.log('⚠️ [CLIENT] All received items were duplicates!')
+              return prev // Return unchanged if no new content
             }
-            return [...prev, ...uniqueNewContent]
+            newContentArray = [...prev, ...uniqueNewContent]
+            console.log(`📈 [CLIENT] Appended ${uniqueNewContent.length} items: ${prev.length} → ${newContentArray.length} total`)
+          } else {
+            // Initial load
+            console.log(`🔄 [CLIENT] Initial load: replacing ${prev.length} items with ${newContent.length} items`)
+            newContentArray = newContent
           }
-          console.log(`🔄 [CLIENT] Initial load: replacing ${prev.length} items with ${newContent.length} items`)
-          return newContent
+          
+          // Update ref with new content
+          contentRef.current = newContentArray
+          return newContentArray
         })
       } else {
         console.error(`API request failed: ${response.status} ${response.statusText}`)
@@ -137,60 +180,37 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     }
   }
 
+  // Prevent double initial requests (React StrictMode issue)
+  const initializationRef = useRef<{ [key: string]: boolean }>({})
+  
   useEffect(() => {
-    fetchContent()
+    const key = `init_${scrollerSlug}`
+    if (!initializationRef.current[key]) {
+      initializationRef.current[key] = true
+      console.log(`🎯 [CLIENT] First initialization for ${scrollerSlug}`)
+      fetchContent()
+    } else {
+      console.log(`⚠️ [CLIENT] Skipping duplicate initialization for ${scrollerSlug}`)
+    }
   }, [scrollerSlug])
 
   // Stabilize fetchContent to prevent race conditions
   const stableFetchContent = useCallback(fetchContent, [scrollerSlug])
 
-  // Balanced preloading: trigger earlier but not too aggressively to save costs
+  // Simplified infinite scroll trigger - only when near the end
   useEffect(() => {
-    // Trigger when 15 items from end (was 25 items, then 50%)
-    const shouldTrigger = currentIndex >= content.length - 15 && content.length > 0 && !isGenerating
+    // Only trigger when we're at the last few items and not already generating
+    const shouldTrigger = currentIndex >= content.length - 3 && content.length > 0 && !isGenerating && !isLoading
     
-    // Only trigger if we actually need more content and aren't at the absolute end
-    if (shouldTrigger && currentIndex < content.length - 1) {
+    // Additional check: only trigger if we haven't already requested this offset
+    const wouldRequestOffset = contentRef.current.length
+    const isNewOffset = lastLoadMoreOffset.current !== wouldRequestOffset
+    
+    if (shouldTrigger && isNewOffset) {
+      console.log(`🔄 [CLIENT] Triggering load more: currentIndex=${currentIndex}, contentLength=${content.length}, newOffset=${wouldRequestOffset}`)
       stableFetchContent(true)
     }
-  }, [currentIndex, content.length, isGenerating, stableFetchContent])
-
-  // Reduced background maintenance to save costs
-  useEffect(() => {
-    const maintainBuffer = () => {
-      const bufferSize = 20 // Reduced buffer to save API costs
-      const itemsAhead = content.length - currentIndex
-      
-      if (itemsAhead < bufferSize && content.length > 0 && !isGenerating) {
-        stableFetchContent(true)
-      }
-    }
-
-    const interval = setInterval(maintainBuffer, 10000) // Check every 10 seconds (was 2)
-    return () => clearInterval(interval)
-  }, [currentIndex, content.length, isGenerating, stableFetchContent])
-
-  // Additional safety net: trigger content generation on scroll position too
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    const checkScrollPosition = () => {
-      const scrollPosition = container.scrollTop
-      const windowHeight = window.innerHeight
-      const totalHeight = container.scrollHeight
-      const scrollPercentage = scrollPosition / (totalHeight - windowHeight)
-      
-      // Conservative scroll trigger to reduce API calls
-      if (scrollPercentage > 0.85 && content.length > 0 && !isGenerating) {
-        stableFetchContent(true)
-      }
-    }
-
-    const throttledCheck = throttle(checkScrollPosition, 100) // Throttle to prevent excessive calls
-    container.addEventListener('scroll', throttledCheck, { passive: true })
-    return () => container.removeEventListener('scroll', throttledCheck)
-  }, [content.length, isGenerating, stableFetchContent])
+  }, [currentIndex, content.length, isGenerating, isLoading, stableFetchContent])
 
   // Cycle through witty messages for initial loading
   useEffect(() => {
@@ -204,16 +224,17 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
   }, [isLoading])
 
 
-  // Cycle through witty wait messages
+  // Cycle through witty wait messages (debug or normal)
   useEffect(() => {
     if (isGenerating) {
+      const messages = isDebugMode ? DEBUG_WAIT_MESSAGES : WAIT_MESSAGES
       const interval = setInterval(() => {
-        setWaitMessageIndex((prev) => (prev + 1) % WAIT_MESSAGES.length)
+        setWaitMessageIndex((prev) => (prev + 1) % messages.length)
       }, 2000)
       
       return () => clearInterval(interval)
     }
-  }, [isGenerating])
+  }, [isGenerating, isDebugMode])
 
   // Use useCallback to stabilize scroll handler and prevent constant re-registration
   const handleScroll = useCallback(() => {
@@ -230,25 +251,28 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     const rawIndex = scrollPosition / windowHeight
     const newIndex = Math.round(rawIndex)
     
-    // Prevent scrolling beyond available content
+    // Calculate the maximum allowed index
     const maxIndex = isGenerating ? content.length : content.length - 1
     
-    // Only clamp if we're way beyond the limit AND not generating
-    // When generating, allow some flexibility to reach the loading card
-    if (!isGenerating && newIndex > maxIndex) {
-      // Force scroll back to the last available item
+    // Clamp the index to valid range
+    const clampedIndex = Math.max(0, Math.min(newIndex, maxIndex))
+    
+    // Update current index if it changed and is valid
+    if (clampedIndex !== currentIndex && clampedIndex >= 0) {
+      setCurrentIndex(clampedIndex)
+    }
+    
+    // Prevent scrolling beyond available content bounds
+    if (newIndex > maxIndex) {
       container.scrollTo({
         top: maxIndex * windowHeight,
         behavior: 'smooth'
       })
-      return
-    }
-    
-    // When generating, allow scrolling to the loading card position
-    const actualMaxIndex = isGenerating ? content.length : content.length - 1
-    
-    if (newIndex !== currentIndex && newIndex >= 0 && newIndex <= actualMaxIndex) {
-      setCurrentIndex(newIndex)
+    } else if (newIndex < 0) {
+      container.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      })
     }
   }, [currentIndex, content.length, isGenerating])
 
@@ -353,7 +377,7 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
             <div className="text-center max-w-5xl w-full">
               <div className="animate-spin w-12 h-12 border-2 border-white/30 border-t-white rounded-full mx-auto mb-8"></div>
               <div className="text-white/70 text-base leading-relaxed font-normal italic transition-opacity duration-500">
-                {WAIT_MESSAGES[waitMessageIndex]}
+                {(isDebugMode ? DEBUG_WAIT_MESSAGES : WAIT_MESSAGES)[waitMessageIndex]}
               </div>
             </div>
           </div>

@@ -3,7 +3,7 @@ import type { Scroller, ContentItem } from './types'
 import { promises as fs } from 'fs'
 import path from 'path'
 
-const mockDbPath = path.join(process.cwd(), 'src/lib/mockdb.json')
+const mockDbPath = path.join(process.cwd(), 'mock-db.json')
 
 interface MockDatabase {
   scrollers: Scroller[]
@@ -121,14 +121,14 @@ export class Database {
         .from('content_items')
         .select('*')
         .eq('scroller_id', scrollerId)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: true }) // Changed to ascending for chronological order
       
       return error ? [] : data
     } else {
       const db = await loadMockDB()
       return db.content_items
         .filter(item => item.scroller_id === scrollerId)
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) // Changed to ascending
     }
   }
 
