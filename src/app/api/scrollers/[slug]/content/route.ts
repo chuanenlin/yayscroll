@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server'
 import { openai } from '@/lib/openai'
 import { db } from '@/lib/database'
+import { z } from 'zod'
+import { zodResponseFormat } from 'openai/helpers/zod'
 
-// Removed isContentSimilar function - now using GPT context awareness instead of post-generation filtering
+// Define the structured output schema
+const ContentItem = z.object({
+  content: z.string().describe("The main content text without any source citations or links"),
+  source_title: z.string().optional().describe("The title or name of the source (if any)"),
+  source_url: z.string().optional().describe("The URL of the source (if any)")
+})
+
+const ContentResponse = z.object({
+  items: z.array(ContentItem).describe("Array of content items with separated content and sources")
+})
 
 interface Params {
   slug: string
@@ -59,15 +70,12 @@ export async function GET(
       const itemsToGenerate = 20 // Reduced batch size to save costs
       
       try {
-        const completion = await openai.chat.completions.create({
-          model: "gpt-4o-mini-search-preview",
-          web_search_options: {
-            search_context_size: "medium",
-          },
+        const completion = await openai.chat.completions.parse({
+          model: "gpt-4o-mini",
           messages: [
             {
               role: "system",
-              content: "You are a content generator for a TikTok-style infinite scroll app. Use web search to find current, accurate information. Generate multiple unique pieces of content. Keep formatting clean and readable. Each should be different, factual, and engaging. ALWAYS include clickable source links from your web search results to build trust and credibility. Use markdown link format: [Source Name](URL). Format your response as a numbered list."
+              content: "You are a content generator for a TikTok-style infinite scroll app. Generate multiple unique pieces of content based on your knowledge. Keep each item's content clean and readable without any source citations mixed in. Sources should be provided separately in the source_title and source_url fields when available."
             },
             {
               role: "user",
@@ -92,184 +100,67 @@ CONTENT LENGTH GUIDANCE:
 - BUT: If the user specifically asks for "complete", "full", "detailed", "code solution", "step by step", or similar terms, provide longer detailed content
 - DETECT: Look for keywords indicating they want more detail: "complete code", "full explanation", "detailed guide", "step by step", "tutorial", etc.
 
-Use web search to find current, accurate information. Each item should be:
+STRUCTURED OUTPUT INSTRUCTIONS:
+- Put ONLY the main content in the "content" field - NO source citations, links, or "Source:" text
+- If you know a credible source, put the source name in "source_title" and URL in "source_url"
+- Keep content clean and readable without any citation clutter
+- Use markdown formatting in content when needed (code blocks, bold, etc.)
+
+Each item should be:
 - Match the user's request exactly for length and detail
-- Based on real, current information when possible  
+- Based on your training knowledge
 - Completely different from the others
 - Engaging and interesting
-- Clean formatting (use markdown for code blocks if needed)
-- INCLUDE CLICKABLE SOURCES: Always add credible sources as clickable links at the end using markdown format like "[Source: Reuters](https://reuters.com)" or "[via BBC News](https://bbc.com/news/article)" to build trust and credibility
-
-Format as:
-1. [content]
-2. [content]
-3. [content]
-etc.`
+- Clean formatting in the content field only`
             }
           ],
-          max_tokens: 16000, // High limit to ensure complete responses, especially for code
+          response_format: zodResponseFormat(ContentResponse, "content_response"),
+          max_completion_tokens: 16000,
         })
 
-        const response = completion.choices[0]?.message?.content
-        const annotations = completion.choices[0]?.message?.annotations || []
+        // Handle structured output response
+        const parsedResponse = completion.choices[0]?.message?.parsed
         
-        if (response) {
-          // Extract all sources from annotations first
-          const allSources: Array<{ text: string; url: string }> = []
-          annotations.forEach((annotation: { type: string; url_citation?: { title?: string; url: string } }) => {
-            if (annotation.type === 'url_citation' && annotation.url_citation) {
-              const citation = annotation.url_citation
-              const sourceData = {
-                text: citation.title || new URL(citation.url).hostname,
-                url: citation.url
-              }
-              // Deduplicate sources
-              if (!allSources.some(s => s.url === sourceData.url)) {
-                allSources.push(sourceData)
+        if (parsedResponse && parsedResponse.items) {
+          console.log(`📊 Generated ${parsedResponse.items.length} items via structured output`)
+          
+          // Process each structured item
+          const processedItems = parsedResponse.items.map((item) => {
+            // Prepare source URLs array
+            const urls: Array<{ text: string; url: string }> = []
+            if (item.source_title && item.source_url) {
+              urls.push({
+                text: item.source_title,
+                url: item.source_url
+              })
+            }
+            
+            // Determine content type for consistent sizing
+            const contentType: 'short' | 'detailed' = 
+              item.content.includes('```') || item.content.length > 200 ? 'detailed' : 'short'
+            
+            return {
+              scroller_id: scroller.id,
+              content: item.content.trim(),
+              metadata: {
+                urls: urls,
+                contentType: contentType
               }
             }
           })
-          
-          // Parse the numbered list - handle multi-line content properly
-          // More robust parsing that preserves code blocks and multi-line content
-          const contentLines: string[] = []
-          const lines = response.split('\n')
-          let currentSection = ''
-          let inCodeBlock = false
-          
-          for (let i = 0; i < lines.length; i++) {
-            const line = lines[i]
-            
-            // Track code block boundaries
-            if (line.includes('```')) {
-              inCodeBlock = !inCodeBlock
-            }
-            
-            // Check if this is a new numbered item (only when not in code block)
-            if (!inCodeBlock && /^\d+\.\s/.test(line.trim())) {
-              // Save previous section if it exists
-              if (currentSection.trim()) {
-                contentLines.push(currentSection.trim())
-              }
-              // Start new section (remove the number)
-              currentSection = line.replace(/^\d+\.\s*/, '').trim()
-            } else {
-              // Add to current section
-              if (currentSection || line.trim()) {
-                currentSection += (currentSection ? '\n' : '') + line
-              }
-            }
-          }
-          
-          // Don't forget the last section
-          if (currentSection.trim()) {
-            contentLines.push(currentSection.trim())
-          }
-          
-          // Filter out empty sections
-          const validContentLines = contentLines.filter(section => section.length > 0)
-            .map((section, itemIndex) => {
-              // Find the most relevant source for this specific content item
-              let bestSource = null
-              let bestScore = -1
-              
-              // Try to match source content with the item content
-              for (const source of allSources) {
-                const sourceWords = source.text.toLowerCase().split(/\W+/).filter(w => w.length > 2)
-                const contentWords = section.toLowerCase().split(/\W+/).filter(w => w.length > 2)
-                
-                // Calculate relevance score based on word overlap
-                const commonWords = sourceWords.filter(word => 
-                  contentWords.some(contentWord => 
-                    contentWord.includes(word) || word.includes(contentWord)
-                  )
-                )
-                const score = commonWords.length / Math.max(sourceWords.length, 1)
-                
-                if (score > bestScore) {
-                  bestScore = score
-                  bestSource = source
-                }
-              }
-              
-              // Fallback: if no good match, use round-robin distribution
-              const itemSources = bestSource ? [bestSource] : 
-                allSources.length > 0 ? [allSources[itemIndex % allSources.length]] : []
-              
-              // Clean up any existing markdown links and citations in content
-              section = section.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
-              section = section.replace(/\(https?:\/\/[^)]+\)/g, '')
-              section = section.replace(/\(www\.[^)]+\)/g, '')
-              section = section.replace(/\([a-zA-Z0-9.-]+\.(com|org|net|edu|gov|io|co|uk|ca|au)[^)]*\)/g, '')
-              
-              // Remove source citations that appear as plain text (since we show them separately)
-              section = section.replace(/\b[-•*]\s*Source:\s*[^.\n]+/gi, '')
-              section = section.replace(/\bSource:\s*[^.\n]+/gi, '')
-              section = section.replace(/\b[-•*]\s*via\s+[^.\n]+/gi, '')
-              section = section.replace(/\bvia\s+[^.\n]+/gi, '')
-              section = section.replace(/\b[-•*]\s*\([^)]*\)$/gi, '')
-              
-              // Clean up bullet points that might be left over
-              section = section.replace(/^\s*[-•*]\s*/, '')
-              section = section.replace(/\n\s*[-•*]\s*$/, '')
-              
-              // Preserve code blocks and multi-line content
-              if (!section.includes('```')) {
-                // Only clean up non-code content
-                section = section.replace(/\*\*(.*?)\*\*/g, '$1') // Remove bold (except in code)
-                section = section.replace(/\*(.*?)\*/g, '$1') // Remove italic (except in code)
-                section = section.replace(/`([^`]+)`/g, '$1') // Remove inline code formatting
-                
-                // Clean up excessive spaces but preserve line breaks
-                section = section.replace(/[ \t]+/g, ' ').trim()
-                section = section.replace(/\s+([.!?])/g, '$1')
-                
-                // Final cleanup: remove any trailing source references that might remain
-                section = section.replace(/\s*[-–—]\s*[^.!?]*(?:source|via|from|according to)[^.!?]*$/gi, '')
-                section = section.replace(/\s*\|\s*[^.!?]*(?:source|via|from)[^.!?]*$/gi, '')
-                
-                // Only add period for short content that doesn't end with punctuation
-                if (section.length < 200 && section && !section.match(/[.!?]$/) && !section.match(/__URL_\d+__$/)) {
-                  section += '.'
-                }
-              }
-              
-              return { content: section, urls: itemSources }
-            })
-
-          
-          // GPT has been instructed to avoid repetition based on existing content context
-          // No need for post-generation similarity filtering - trust GPT's context awareness
-          const uniqueContentLines = validContentLines
-          
-          console.log(`📊 Generated ${validContentLines.length} items from GPT with context awareness`)
-
-          
-          // Determine content type for consistent sizing across this scroller
-          const hasLongContent = uniqueContentLines.some(item => 
-            item.content.includes('```') || item.content.length > 200
-          )
-          const contentType: 'short' | 'detailed' = hasLongContent ? 'detailed' : 'short'
-
-          const newItems = uniqueContentLines.map((item) => ({
-            scroller_id: scroller.id,
-            content: item.content,
-            metadata: { 
-              urls: item.urls,
-              contentType: contentType
-            }
-          }))
 
           // Insert new items
-          if (newItems.length > 0) {
-            console.log(`💾 Saving ${newItems.length} new items to database`)
-            const insertedItems = await db.addContentItems(newItems)
+          if (processedItems.length > 0) {
+            console.log(`💾 Saving ${processedItems.length} structured items to database`)
+            const insertedItems = await db.addContentItems(processedItems)
             if (insertedItems.length > 0) {
               console.log(`✅ Successfully saved ${insertedItems.length} items`)
-              // Don't modify existingContent here - let the final sort handle order
+              // Refresh from database to ensure consistent ordering
               existingContent = await db.getAllContentItems(scroller.id)
             }
           }
+        } else {
+          console.log('⚠️ No structured response received from OpenAI')
         }
       } catch (error) {
         console.error('Error generating content:', error)
