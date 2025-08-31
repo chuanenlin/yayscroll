@@ -90,18 +90,27 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
         params.append('offset', content.length.toString())
       }
       const url = `/api/scrollers/${scrollerSlug}/content${params.toString() ? '?' + params.toString() : ''}`
+      console.log(`📡 [CLIENT] Making request: ${url}`)
+      console.log(`📊 [CLIENT] Current state: ${content.length} items, currentIndex=${currentIndex}`)
       
       const response = await fetch(url)
       if (response.ok) {
         const newContent = await response.json()
+        console.log(`📦 [CLIENT] Received ${newContent.length} items, loadMore=${loadMore}`)
+        console.log(`📦 [CLIENT] First item ID: ${newContent[0]?.id}, content preview: "${newContent[0]?.content?.substring(0, 50)}..."`)
         
         setContent(prev => {
           if (loadMore) {
             // Filter out any content that already exists to prevent duplicates
             const existingIds = new Set(prev.map(item => item.id))
             const uniqueNewContent = newContent.filter((item: ContentItem) => !existingIds.has(item.id))
+            console.log(`🔍 [CLIENT] Filtered: ${newContent.length} → ${uniqueNewContent.length} unique items`)
+            if (uniqueNewContent.length === 0) {
+              console.log('⚠️ [CLIENT] All received items were duplicates!')
+            }
             return [...prev, ...uniqueNewContent]
           }
+          console.log(`🔄 [CLIENT] Initial load: replacing ${prev.length} items with ${newContent.length} items`)
           return newContent
         })
       }

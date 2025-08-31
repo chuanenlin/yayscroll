@@ -278,7 +278,12 @@ etc.`
     // Return paginated results - larger chunks for smoother scrolling
     const startIndex = offset
     const endIndex = offset + 40 // Increased from 20 to 40 for better user experience
-    return NextResponse.json(existingContent.slice(startIndex, endIndex))
+    const paginatedContent = existingContent.slice(startIndex, endIndex)
+    
+    console.log(`📄 [API] Returning ${paginatedContent.length} items (${startIndex}-${endIndex-1}) from ${existingContent.length} total`)
+    console.log(`📄 [API] First item: ${paginatedContent[0]?.id} - "${paginatedContent[0]?.content?.substring(0, 50)}..."`)
+    
+    return NextResponse.json(paginatedContent)
   } catch (error) {
     console.error('Error fetching content:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
