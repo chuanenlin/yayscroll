@@ -71,7 +71,7 @@ export async function GET(
       
       try {
         const completion = await openai.chat.completions.parse({
-          model: "gpt-4o-mini",
+          model: "gpt-4o-mini-search-preview",
           messages: [
             {
               role: "system",
