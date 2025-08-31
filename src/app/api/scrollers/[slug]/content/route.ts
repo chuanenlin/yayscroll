@@ -136,31 +136,37 @@ etc.`
         const annotations = completion.choices[0]?.message?.annotations || []
         
         if (response) {
+          // Extract all sources from annotations first
+          const allSources: Array<{ text: string; url: string }> = []
+          annotations.forEach((annotation: any) => {
+            if (annotation.type === 'url_citation' && annotation.url_citation) {
+              const citation = annotation.url_citation
+              const sourceData = {
+                text: citation.title || new URL(citation.url).hostname,
+                url: citation.url
+              }
+              // Deduplicate sources
+              if (!allSources.some(s => s.url === sourceData.url)) {
+                allSources.push(sourceData)
+              }
+            }
+          })
+          
           // Parse the numbered list - handle multi-line content properly
           const numberedSections = response.split(/\n(?=\d+\.)/g)
           const contentLines = numberedSections
             .filter(section => /^\d+\./.test(section.trim()))
             .map(section => section.replace(/^\d+\.\s*/, '').trim())
             .filter(section => section.length > 0)
-            .map(section => {
-              // Extract sources from annotations instead of parsing markdown
-              const urls: Array<{ text: string; url: string }> = []
+            .map((section, itemIndex) => {
+              // Assign 1-2 relevant sources per item instead of all sources
+              const itemSources = allSources.slice(itemIndex % allSources.length, (itemIndex % allSources.length) + 2)
               
-              // Get sources from API annotations
-              annotations.forEach((annotation: any) => {
-                if (annotation.type === 'url_citation' && annotation.url_citation) {
-                  const citation = annotation.url_citation
-                  urls.push({
-                    text: citation.title || new URL(citation.url).hostname,
-                    url: citation.url
-                  })
-                }
-              })
-              
-              // Clean up any existing markdown links in content
+              // Clean up any existing markdown links and citations in content
               section = section.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
               section = section.replace(/\(https?:\/\/[^)]+\)/g, '')
               section = section.replace(/\(www\.[^)]+\)/g, '')
+              section = section.replace(/\([a-zA-Z0-9.-]+\.(com|org|net|edu|gov|io|co|uk|ca|au)[^)]*\)/g, '')
               
               // Preserve code blocks and multi-line content
               if (!section.includes('```')) {
@@ -179,7 +185,7 @@ etc.`
                 }
               }
               
-              return { content: section, urls }
+              return { content: section, urls: itemSources }
             })
 
           

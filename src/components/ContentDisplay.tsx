@@ -128,15 +128,15 @@ export default function ContentDisplay({ content, urls = [], contentType }: Cont
       
       {/* Sources section - display as subtle clickable links */}
       {urls.length > 0 && (
-        <div className="mt-4 pt-3 border-t border-white/10">
-          <div className="flex flex-wrap gap-2">
+        <div className="mt-3">
+          <div className="flex flex-wrap gap-3">
             {urls.map((urlData, index) => (
               <a
                 key={index}
                 href={urlData.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-white/40 hover:text-white/70 text-sm underline underline-offset-2 transition-colors duration-200"
+                className="text-white/30 hover:text-white/60 text-xs underline underline-offset-2 transition-colors duration-200"
               >
                 {urlData.text}
               </a>
