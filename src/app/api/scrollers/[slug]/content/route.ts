@@ -102,7 +102,8 @@ CONTENT LENGTH GUIDANCE:
 
 STRUCTURED OUTPUT INSTRUCTIONS:
 - Put ONLY the main content in the "content" field - NO source citations, links, or "Source:" text
-- If you know a credible source, put the source name in "source_title" and URL in "source_url"
+- DO NOT number the content items (no "1.", "2.", "8." etc. at the beginning)
+- If you know a credible source, put the source name in "source_title" and URL in "source_url"  
 - If no source is known, set "source_title" and "source_url" to null
 - Keep content clean and readable without any citation clutter
 - Use markdown formatting in content when needed (code blocks, bold, etc.)
@@ -112,7 +113,8 @@ Each item should be:
 - Based on your training knowledge
 - Completely different from the others
 - Engaging and interesting
-- Clean formatting in the content field only`
+- Clean formatting in the content field only
+- Start directly with the content (no numbering prefix)`
             }
           ],
           response_format: zodResponseFormat(ContentResponse, "content_response"),
