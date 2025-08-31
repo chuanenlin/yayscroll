@@ -138,7 +138,7 @@ etc.`
         if (response) {
           // Extract all sources from annotations first
           const allSources: Array<{ text: string; url: string }> = []
-          annotations.forEach((annotation: any) => {
+          annotations.forEach((annotation: { type: string; url_citation?: { title?: string; url: string } }) => {
             if (annotation.type === 'url_citation' && annotation.url_citation) {
               const citation = annotation.url_citation
               const sourceData = {
