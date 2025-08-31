@@ -202,6 +202,17 @@ etc.`
               section = section.replace(/\(www\.[^)]+\)/g, '')
               section = section.replace(/\([a-zA-Z0-9.-]+\.(com|org|net|edu|gov|io|co|uk|ca|au)[^)]*\)/g, '')
               
+              // Remove source citations that appear as plain text (since we show them separately)
+              section = section.replace(/\b[-•*]\s*Source:\s*[^.\n]+/gi, '')
+              section = section.replace(/\bSource:\s*[^.\n]+/gi, '')
+              section = section.replace(/\b[-•*]\s*via\s+[^.\n]+/gi, '')
+              section = section.replace(/\bvia\s+[^.\n]+/gi, '')
+              section = section.replace(/\b[-•*]\s*\([^)]*\)$/gi, '')
+              
+              // Clean up bullet points that might be left over
+              section = section.replace(/^\s*[-•*]\s*/, '')
+              section = section.replace(/\n\s*[-•*]\s*$/, '')
+              
               // Preserve code blocks and multi-line content
               if (!section.includes('```')) {
                 // Only clean up non-code content
@@ -212,6 +223,10 @@ etc.`
                 // Clean up excessive spaces but preserve line breaks
                 section = section.replace(/[ \t]+/g, ' ').trim()
                 section = section.replace(/\s+([.!?])/g, '$1')
+                
+                // Final cleanup: remove any trailing source references that might remain
+                section = section.replace(/\s*[-–—]\s*[^.!?]*(?:source|via|from|according to)[^.!?]*$/gi, '')
+                section = section.replace(/\s*\|\s*[^.!?]*(?:source|via|from)[^.!?]*$/gi, '')
                 
                 // Only add period for short content that doesn't end with punctuation
                 if (section.length < 200 && section && !section.match(/[.!?]$/) && !section.match(/__URL_\d+__$/)) {
