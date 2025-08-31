@@ -134,7 +134,8 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     // Trigger when 15 items from end (was 25 items, then 50%)
     const shouldTrigger = currentIndex >= content.length - 15 && content.length > 0 && !isGenerating
     
-    if (shouldTrigger) {
+    // Only trigger if we actually need more content and aren't at the absolute end
+    if (shouldTrigger && currentIndex < content.length - 1) {
       stableFetchContent(true)
     }
   }, [currentIndex, content.length, isGenerating, stableFetchContent])
@@ -214,8 +215,18 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     const rawIndex = scrollPosition / windowHeight
     const newIndex = Math.round(rawIndex)
     
-    // Allow scrolling to the wait message scroll when generating
+    // Prevent scrolling beyond available content
     const maxIndex = isGenerating ? content.length : content.length - 1
+    
+    // Clamp the scroll position to prevent going beyond available content
+    if (newIndex > maxIndex) {
+      // Force scroll back to the last available item
+      container.scrollTo({
+        top: maxIndex * windowHeight,
+        behavior: 'smooth'
+      })
+      return
+    }
     
     if (newIndex !== currentIndex && newIndex >= 0 && newIndex <= maxIndex) {
       setCurrentIndex(newIndex)
