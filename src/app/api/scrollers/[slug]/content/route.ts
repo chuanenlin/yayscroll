@@ -2,38 +2,7 @@ import { NextResponse } from 'next/server'
 import { openai } from '@/lib/openai'
 import { db } from '@/lib/database'
 
-// Check if content is too similar to existing content
-function isContentSimilar(newContent: string, existingContent: { content: string }[]): boolean {
-  const newWords = newContent.toLowerCase().split(/\W+/).filter(word => word.length > 3)
-  
-  for (const existing of existingContent.slice(-20)) { // Check last 20 items
-    const existingWords = existing.content.toLowerCase().split(/\W+/).filter((word: string) => word.length > 3)
-    
-    // Calculate word overlap
-    const commonWords = newWords.filter(word => existingWords.includes(word))
-    const overlapRatio = commonWords.length / Math.min(newWords.length, existingWords.length)
-    
-    // If more than 50% overlap, consider it similar (was 30% - too aggressive)
-    if (overlapRatio > 0.5) {
-      return true
-    }
-    
-    // Check for exact phrase matches (3+ words in a row)
-    const newPhrases = []
-    for (let i = 0; i < newWords.length - 2; i++) {
-      newPhrases.push(newWords.slice(i, i + 3).join(' '))
-    }
-    
-    const existingText = existing.content.toLowerCase()
-    for (const phrase of newPhrases) {
-      if (existingText.includes(phrase)) {
-        return true
-      }
-    }
-  }
-  
-  return false
-}
+// Removed isContentSimilar function - now using GPT context awareness instead of post-generation filtering
 
 interface Params {
   slug: string
@@ -106,11 +75,16 @@ export async function GET(
 
 CRITICAL ANTI-REPETITION REQUIREMENTS:
 - Each item must be COMPLETELY UNIQUE - no similar topics, words, or themes
-- Avoid repeating ANY concepts, examples, or subject matter from existing content
-- Use diverse vocabulary, examples, and approaches
-- If this is vocabulary/definitions: use completely different words
-- If this is facts: cover different subjects/areas entirely
-- NEVER reuse the same examples, quotes, or specific details${existingContent.length > 0 ? `\n\nEXISTING CONTENT TO AVOID REPEATING (DO NOT use similar topics, words, or themes):\n${existingContent.slice(-15).map((item: { content: string }) => `- ${item.content.substring(0, 150)}`).join('\n')}` : ''}
+- Study the existing content below and avoid ANY repetition of topics, examples, or concepts
+- Use diverse vocabulary, examples, and approaches that are different from existing content
+- If this is vocabulary/definitions: use completely different words than those already covered
+- If this is facts: cover different subjects/areas/categories entirely from what exists
+- NEVER reuse the same examples, quotes, statistics, or specific details${existingContent.length > 0 ? `
+
+EXISTING CONTENT TO STUDY AND AVOID REPEATING (${existingContent.length} items total):
+${existingContent.slice(-25).map((item: { content: string }, index: number) => `${index + 1}. ${item.content}`).join('\n\n')}
+
+INSTRUCTION: Generate content that is completely different from ALL the above examples. Use different topics, different examples, different vocabulary, and different approaches.` : ''}
 
 CONTENT LENGTH GUIDANCE:
 - DEFAULT: Keep content short (1-2 sentences, like a tweet) for easy mobile scrolling
@@ -248,16 +222,11 @@ etc.`
             })
 
           
-          // Filter out similar content (but be less aggressive)
-          const uniqueContentLines = validContentLines.filter(item => {
-            if (isContentSimilar(item.content, existingContent)) {
-              console.log('🔄 Filtered similar content:', item.content.substring(0, 100))
-              return false
-            }
-            return true
-          })
+          // GPT has been instructed to avoid repetition based on existing content context
+          // No need for post-generation similarity filtering - trust GPT's context awareness
+          const uniqueContentLines = validContentLines
           
-          console.log(`📊 Generated ${validContentLines.length} items, ${uniqueContentLines.length} unique after filtering`)
+          console.log(`📊 Generated ${validContentLines.length} items from GPT with context awareness`)
 
           
           // Determine content type for consistent sizing across this scroller
