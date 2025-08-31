@@ -159,8 +159,32 @@ etc.`
             .map(section => section.replace(/^\d+\.\s*/, '').trim())
             .filter(section => section.length > 0)
             .map((section, itemIndex) => {
-              // Assign 1-2 relevant sources per item instead of all sources
-              const itemSources = allSources.slice(itemIndex % allSources.length, (itemIndex % allSources.length) + 2)
+              // Find the most relevant source for this specific content item
+              let bestSource = null
+              let bestScore = -1
+              
+              // Try to match source content with the item content
+              for (const source of allSources) {
+                const sourceWords = source.text.toLowerCase().split(/\W+/).filter(w => w.length > 2)
+                const contentWords = section.toLowerCase().split(/\W+/).filter(w => w.length > 2)
+                
+                // Calculate relevance score based on word overlap
+                const commonWords = sourceWords.filter(word => 
+                  contentWords.some(contentWord => 
+                    contentWord.includes(word) || word.includes(contentWord)
+                  )
+                )
+                const score = commonWords.length / Math.max(sourceWords.length, 1)
+                
+                if (score > bestScore) {
+                  bestScore = score
+                  bestSource = source
+                }
+              }
+              
+              // Fallback: if no good match, use round-robin distribution
+              const itemSources = bestSource ? [bestSource] : 
+                allSources.length > 0 ? [allSources[itemIndex % allSources.length]] : []
               
               // Clean up any existing markdown links and citations in content
               section = section.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
