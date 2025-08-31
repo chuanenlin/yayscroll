@@ -199,14 +199,14 @@ export default function Home() {
               </div>
             </a>
             <a
-              href="/daily-quotes"
+              href="https://doomscrolleverything.vercel.app/guinness-world-records-trivia-1"
               target="_blank"
               rel="noopener noreferrer"
               className="group bg-gray-900/20 backdrop-blur-sm border border-gray-700/30 rounded-lg p-3 sm:p-4 hover:border-gray-600/50 hover:bg-gray-800/30 transition-all duration-200 cursor-pointer text-left"
             >
-              <div className="text-white text-sm font-medium mb-2 group-hover:text-gray-100">Daily Quotes</div>
+              <div className="text-white text-sm font-medium mb-2 group-hover:text-gray-100">Guinness World Records</div>
               <div className="text-gray-400 text-sm font-light leading-relaxed line-clamp-3 group-hover:text-gray-300">
-                &ldquo;The only way to do great work is to love what you do.&rdquo; — Steve Jobs
+                <strong>Tallest Living Man:</strong> Sultan Kösen from Turkey holds the record for the tallest living man, measuring 8 feet 2.8 inches (251 cm).
               </div>
             </a>
             <a
