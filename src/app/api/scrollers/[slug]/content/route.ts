@@ -13,8 +13,8 @@ function isContentSimilar(newContent: string, existingContent: { content: string
     const commonWords = newWords.filter(word => existingWords.includes(word))
     const overlapRatio = commonWords.length / Math.min(newWords.length, existingWords.length)
     
-    // If more than 30% overlap, consider it similar
-    if (overlapRatio > 0.3) {
+    // If more than 50% overlap, consider it similar (was 30% - too aggressive)
+    if (overlapRatio > 0.5) {
       return true
     }
     
@@ -49,6 +49,8 @@ export async function GET(
     const loadMore = searchParams.get('loadMore') === 'true'
     const offset = parseInt(searchParams.get('offset') || '0')
     
+    console.log(`🔥 [API] Request: slug=${slug}, loadMore=${loadMore}, offset=${offset}`)
+    
     // Rate limiting to prevent excessive API calls
     const now = Date.now()
     const rateLimitKey = `rate_limit_${slug}`
@@ -81,6 +83,7 @@ export async function GET(
 
     // Get existing content
     let existingContent = await db.getAllContentItems(scroller.id)
+    console.log(`📊 [API] Current content count: ${existingContent.length}`)
 
     // Generate content if we need more (initial load or loadMore request)
     if (existingContent.length < 30 || loadMore) {
@@ -245,13 +248,16 @@ etc.`
             })
 
           
-          // Filter out similar content
+          // Filter out similar content (but be less aggressive)
           const uniqueContentLines = validContentLines.filter(item => {
             if (isContentSimilar(item.content, existingContent)) {
+              console.log('🔄 Filtered similar content:', item.content.substring(0, 100))
               return false
             }
             return true
           })
+          
+          console.log(`📊 Generated ${validContentLines.length} items, ${uniqueContentLines.length} unique after filtering`)
 
           
           // Determine content type for consistent sizing across this scroller
@@ -271,9 +277,12 @@ etc.`
 
           // Insert new items
           if (newItems.length > 0) {
+            console.log(`💾 Saving ${newItems.length} new items to database`)
             const insertedItems = await db.addContentItems(newItems)
             if (insertedItems.length > 0) {
-              existingContent = [...insertedItems, ...existingContent]
+              console.log(`✅ Successfully saved ${insertedItems.length} items`)
+              // Don't modify existingContent here - let the final sort handle order
+              existingContent = await db.getAllContentItems(scroller.id)
             }
           }
         }
@@ -287,7 +296,8 @@ etc.`
 
         const insertedFallback = await db.addContentItems(fallbackItems)
         if (insertedFallback.length > 0) {
-          existingContent = [...insertedFallback, ...existingContent]
+          // Refresh from database to ensure consistent ordering
+          existingContent = await db.getAllContentItems(scroller.id)
         }
       }
     }
