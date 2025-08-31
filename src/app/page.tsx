@@ -106,7 +106,7 @@ export default function Home() {
               }, 150)}
               placeholder="What to scroll?"
               rows={1}
-              className={`w-full px-6 py-4 bg-white text-gray-900 text-sm focus:outline-none ${searchBoxOpen || (showSuggestions && (suggestions.length > 0 || isLoadingSuggestions)) ? 'border-l border-r border-t border-gray-200' : 'border border-gray-200'} resize-none overflow-hidden font-normal placeholder:text-gray-400 shadow-lg hover:shadow-xl focus:shadow-2xl`}
+              className={`w-full px-6 py-4 bg-white text-gray-900 text-lg focus:outline-none ${searchBoxOpen || (showSuggestions && (suggestions.length > 0 || isLoadingSuggestions)) ? 'border-l border-r border-t border-gray-200' : 'border border-gray-200'} resize-none overflow-hidden font-normal placeholder:text-gray-400 shadow-lg hover:shadow-xl focus:shadow-2xl`}
               style={{
                 height: 'auto',
                 minHeight: '56px',
@@ -138,7 +138,7 @@ export default function Home() {
             {showSuggestions && (suggestions.length > 0 || isLoadingSuggestions || prompt.trim().length === 0) && (
               <div className="absolute top-full left-0 right-0 -mt-2 bg-white border-l border-r border-b border-gray-200 rounded-b-xl shadow-xl z-50 max-h-60 overflow-y-auto">
                 {isLoadingSuggestions ? (
-                  <div className="px-4 py-3 text-gray-500 text-sm flex items-center gap-2">
+                  <div className="px-4 py-3 text-gray-500 text-base flex items-center gap-2">
                     <div className="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin"></div>
                     Getting suggestions...
                   </div>
@@ -147,7 +147,7 @@ export default function Home() {
                     <button
                       key={index}
                       type="button"
-                      className="w-full px-4 py-3 text-left hover:bg-gray-50 text-gray-900 text-sm border-b border-gray-100 last:border-b-0 transition-colors duration-150"
+                      className="w-full px-4 py-3 text-left hover:bg-gray-50 text-gray-900 text-base border-b border-gray-100 last:border-b-0 transition-colors duration-150"
                       onMouseDown={(e) => {
                         e.preventDefault(); // Prevent blur
                         setPrompt(suggestion);
@@ -164,7 +164,7 @@ export default function Home() {
             <button
               type="submit"
               disabled={isLoading}
-              className="px-6 py-4 bg-gray-100 text-gray-800 text-sm font-medium rounded-xl hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 border border-gray-300 hover:border-gray-400 shadow-lg hover:shadow-xl whitespace-nowrap flex items-center justify-center"
+              className="px-6 py-4 bg-gray-100 text-gray-800 text-base font-medium rounded-xl hover:bg-gray-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 border border-gray-300 hover:border-gray-400 shadow-lg hover:shadow-xl whitespace-nowrap flex items-center justify-center"
               style={{ minHeight: '56px', marginTop: '-2px' }}
             >
               Scroll
