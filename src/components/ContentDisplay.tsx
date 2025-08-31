@@ -68,21 +68,11 @@ export default function ContentDisplay({ content, urls = [], contentType }: Cont
     return [<div key="content" dangerouslySetInnerHTML={{ __html: formatMarkdown(content) }} />]
   }
 
-  // Simple HTML conversion without placeholders
+  // Simple HTML conversion for markdown formatting
   const formatMarkdown = (text: string) => {
     let html = text
     
-    // First handle URLs and replace with clickable links
-    urls.forEach((urlData, index) => {
-      const placeholder = `__URL_${index}__`
-      if (html.includes(placeholder)) {
-        html = html.replace(new RegExp(placeholder, 'g'), 
-          `<br /><a href="${urlData.url}" target="_blank" rel="noopener noreferrer" class="text-white/40 text-base hover:text-white/60 transition-colors"><span class="text-sm">${urlData.text}</span></a>`
-        )
-      }
-    })
-    
-    // Then process markdown
+    // Process markdown formatting
     html = html
       // Bold
       .replace(/\*\*(.*?)\*\*/g, '<strong class="font-bold text-white">$1</strong>')
@@ -135,6 +125,25 @@ export default function ContentDisplay({ content, urls = [], contentType }: Cont
       <div className={`text-white ${getAdaptiveFontSize()} leading-relaxed font-medium`}>
         {renderContent()}
       </div>
+      
+      {/* Sources section - display as subtle clickable links */}
+      {urls.length > 0 && (
+        <div className="mt-4 pt-3 border-t border-white/10">
+          <div className="flex flex-wrap gap-2">
+            {urls.map((urlData, index) => (
+              <a
+                key={index}
+                href={urlData.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white/40 hover:text-white/70 text-sm underline underline-offset-2 transition-colors duration-200"
+              >
+                {urlData.text}
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
