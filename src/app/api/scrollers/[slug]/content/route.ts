@@ -92,7 +92,6 @@ export async function GET(
           web_search_options: {
             search_context_size: "low",
           },
-          include: ["web_search_call.action.sources"],
           messages: [
             {
               role: "system",
