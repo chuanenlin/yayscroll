@@ -93,7 +93,15 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
       console.log(`📡 [CLIENT] Making request: ${url}`)
       console.log(`📊 [CLIENT] Current state: ${content.length} items, currentIndex=${currentIndex}`)
       
-      const response = await fetch(url)
+      // Add timeout to prevent getting stuck
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+      
+      const response = await fetch(url, {
+        signal: controller.signal
+      })
+      clearTimeout(timeoutId)
+      
       if (response.ok) {
         const newContent = await response.json()
         console.log(`📦 [CLIENT] Received ${newContent.length} items, loadMore=${loadMore}`)
@@ -113,9 +121,16 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
           console.log(`🔄 [CLIENT] Initial load: replacing ${prev.length} items with ${newContent.length} items`)
           return newContent
         })
+      } else {
+        console.error(`API request failed: ${response.status} ${response.statusText}`)
+        throw new Error(`API request failed: ${response.status}`)
       }
     } catch (error) {
       console.error('Error fetching content:', error)
+      // Show error state to user instead of getting stuck
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error('Request timed out after 30 seconds')
+      }
     } finally {
       setIsLoading(false)
       setIsGenerating(false)
@@ -218,8 +233,9 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     // Prevent scrolling beyond available content
     const maxIndex = isGenerating ? content.length : content.length - 1
     
-    // Clamp the scroll position to prevent going beyond available content
-    if (newIndex > maxIndex) {
+    // Only clamp if we're way beyond the limit AND not generating
+    // When generating, allow some flexibility to reach the loading card
+    if (!isGenerating && newIndex > maxIndex) {
       // Force scroll back to the last available item
       container.scrollTo({
         top: maxIndex * windowHeight,
@@ -228,7 +244,10 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
       return
     }
     
-    if (newIndex !== currentIndex && newIndex >= 0 && newIndex <= maxIndex) {
+    // When generating, allow scrolling to the loading card position
+    const actualMaxIndex = isGenerating ? content.length : content.length - 1
+    
+    if (newIndex !== currentIndex && newIndex >= 0 && newIndex <= actualMaxIndex) {
       setCurrentIndex(newIndex)
     }
   }, [currentIndex, content.length, isGenerating])

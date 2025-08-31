@@ -40,8 +40,8 @@ export async function GET(
     if (!globalCache[rateLimitKey]) globalCache[rateLimitKey] = { lastCall: 0, calls: 0 }
     const rateLimit = globalCache[rateLimitKey]
     
-    // Allow max 3 calls per minute per scroller
-    if (now - rateLimit.lastCall < 60000 && rateLimit.calls >= 3) {
+    // Allow max 10 calls per minute per scroller (increased for testing)
+    if (now - rateLimit.lastCall < 60000 && rateLimit.calls >= 10) {
       return NextResponse.json({ error: 'Rate limit exceeded' }, { status: 429 })
     }
     
@@ -72,6 +72,7 @@ export async function GET(
       try {
         const completion = await openai.chat.completions.parse({
           model: "gpt-4o-mini-search-preview",
+          timeout: 25000, // 25 second timeout for OpenAI API
           messages: [
             {
               role: "system",
@@ -152,10 +153,23 @@ Each item should be:
             }
           })
 
-          // Insert new items
-          if (processedItems.length > 0) {
-            console.log(`💾 Saving ${processedItems.length} structured items to database`)
-            const insertedItems = await db.addContentItems(processedItems)
+          // Filter out duplicates from generated items and existing content
+          const existingContentSet = new Set(existingContent.map(item => item.content.trim()))
+          const uniqueItems = processedItems.filter(item => {
+            const content = item.content.trim()
+            if (existingContentSet.has(content)) {
+              return false
+            }
+            existingContentSet.add(content)
+            return true
+          })
+          
+          console.log(`🔍 Filtered ${processedItems.length} → ${uniqueItems.length} unique items (removed duplicates)`)
+
+          // Insert new unique items
+          if (uniqueItems.length > 0) {
+            console.log(`💾 Saving ${uniqueItems.length} unique items to database`)
+            const insertedItems = await db.addContentItems(uniqueItems)
             if (insertedItems.length > 0) {
               console.log(`✅ Successfully saved ${insertedItems.length} items`)
               // Refresh from database to ensure consistent ordering
@@ -168,10 +182,19 @@ Each item should be:
       } catch (error) {
         console.error('Error generating content:', error)
         // Add fallback content if OpenAI fails
-        const fallbackItems = Array.from({ length: itemsToGenerate }, () => ({
-          scroller_id: scroller.id,
-          content: `${scroller.title} #${Math.floor(Math.random() * 1000)}`
-        }))
+        const existingContentSet = new Set(existingContent.map(item => item.content.trim()))
+        const fallbackItems = []
+        
+        while (fallbackItems.length < itemsToGenerate) {
+          const content = `${scroller.title} #${Math.floor(Math.random() * 10000)}`
+          if (!existingContentSet.has(content)) {
+            fallbackItems.push({
+              scroller_id: scroller.id,
+              content: content
+            })
+            existingContentSet.add(content)
+          }
+        }
 
         const insertedFallback = await db.addContentItems(fallbackItems)
         if (insertedFallback.length > 0) {
