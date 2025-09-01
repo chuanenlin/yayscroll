@@ -56,21 +56,25 @@ const DEBUG_WAIT_MESSAGES = [
   "🧪 Debug scrolls incoming... almost ready!"
 ]
 
-// Throttle utility for mobile scroll performance
+// Throttle utility for mobile scroll performance - simplified implementation
 function throttle<T extends (...args: unknown[]) => void>(func: T, delay: number): T {
-  let timeoutId: NodeJS.Timeout
+  let timeoutId: NodeJS.Timeout | undefined
   let lastExecTime = 0
+  
   return function (...args: Parameters<T>) {
     const currentTime = Date.now()
-    if (currentTime - lastExecTime > delay) {
+    
+    if (currentTime - lastExecTime >= delay) {
+      // Execute immediately if enough time has passed
       func(...args)
       lastExecTime = currentTime
-    } else {
-      clearTimeout(timeoutId)
+    } else if (!timeoutId) {
+      // Schedule execution only if not already scheduled
       timeoutId = setTimeout(() => {
         func(...args)
         lastExecTime = Date.now()
-      }, delay)
+        timeoutId = undefined
+      }, delay - (currentTime - lastExecTime))
     }
   } as T
 }
@@ -90,12 +94,11 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
   const [waitMessageIndex, setWaitMessageIndex] = useState(0)
   const [isDebugMode, setIsDebugMode] = useState(false)
   const lastLoadMoreOffset = useRef<number>(-1) // Prevent duplicate requests
-  const contentRef = useRef<ContentItem[]>([]) // Keep current reference
 
   const fetchContent = async (loadMore = false) => {
     try {
-      // Use current content length from ref
-      const currentContentLength = contentRef.current.length
+      // Use current content length from state - direct access is safe here since we're in the handler
+      const currentContentLength = content.length
       
       // Prevent duplicate loadMore requests
       if (loadMore) {
@@ -160,8 +163,6 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
             newContentArray = newContent
           }
           
-          // Update ref with new content
-          contentRef.current = newContentArray
           return newContentArray
         })
       } else {
@@ -203,7 +204,7 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     const shouldTrigger = currentIndex >= content.length - 3 && content.length > 0 && !isGenerating && !isLoading
     
     // Additional check: only trigger if we haven't already requested this offset
-    const wouldRequestOffset = contentRef.current.length
+    const wouldRequestOffset = content.length
     const isNewOffset = lastLoadMoreOffset.current !== wouldRequestOffset
     
     if (shouldTrigger && isNewOffset) {

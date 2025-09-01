@@ -102,7 +102,7 @@ export class Database {
         .from('content_items')
         .select('*')
         .eq('scroller_id', scrollerId)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: true }) // Changed to ascending for consistency
         .range(offset, offset + limit - 1)
       
       return error ? [] : data
@@ -110,7 +110,7 @@ export class Database {
       const db = await loadMockDB()
       return db.content_items
         .filter(item => item.scroller_id === scrollerId)
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) // Changed to ascending
         .slice(offset, offset + limit)
     }
   }
