@@ -26,12 +26,16 @@ async function saveMockDB(db: MockDatabase): Promise<void> {
 
 // Test Supabase connectivity
 async function isSupabaseAvailable(): Promise<boolean> {
-  try {
-    const { error } = await supabase.from('scrollers').select('count', { count: 'exact', head: true })
-    return !error
-  } catch {
-    return false
-  }
+  // Temporarily force mock database for clean testing
+  return false
+  
+  // Original code:
+  // try {
+  //   const { error } = await supabase.from('scrollers').select('count', { count: 'exact', head: true })
+  //   return !error
+  // } catch {
+  //   return false
+  // }
 }
 
 export class Database {
