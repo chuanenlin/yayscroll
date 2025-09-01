@@ -207,6 +207,9 @@ export default function ScrollerFeed({ scrollerSlug }: ScrollerFeedProps) {
     const wouldRequestOffset = content.length
     const isNewOffset = lastLoadMoreOffset.current !== wouldRequestOffset
     
+    // Debug logging
+    console.log(`📊 [CLIENT] Scroll check: currentIndex=${currentIndex}, contentLength=${content.length}, shouldTrigger=${shouldTrigger}, isNewOffset=${isNewOffset}, isGenerating=${isGenerating}, isLoading=${isLoading}`)
+    
     if (shouldTrigger && isNewOffset) {
       console.log(`🔄 [CLIENT] Triggering load more: currentIndex=${currentIndex}, contentLength=${content.length}, newOffset=${wouldRequestOffset}`)
       stableFetchContent(true)
