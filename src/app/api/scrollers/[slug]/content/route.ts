@@ -145,8 +145,6 @@ export async function GET(
       rateLimit.generationStartTime = now
       console.log(`🔒 [API] Generation lock acquired, starting content generation`)
       
-      try {
-      
       const itemsToGenerate = 20 // Reduced batch size to save costs
       console.log(`🔧 [API] Need to generate content: loadMore=${loadMore}, existing=${existingContent.length}, offset=${offset}`)
       
